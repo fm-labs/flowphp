@@ -1,0 +1,155 @@
+APP:
+
+service container
+config container
+
+[SETUP STAGE]
+1. Bootstrap (Setup paths, env variables)
+2. Configuration (Load config files)
+3. Core Services
+4. Plugins
+5. Plugin Configuration
+6. Plugin Services
+-
+[ROUTING STAGE]
+Map route paths to controllers/actions
+-
+
+[EXECUTION STAGE]
+a) Invoke a controller/action directly
+b) Resolve route from url and invoke route handler
+
+
+CONTROLLER:
+
+instance has access to services and config through APP. new Controller(APP)
+invokable with action name
+triggers events (beforeAction, afterAction)
+can subscribe to events
+
+access to request object (r)
+access to response object (rw)
+
+
+ACTION:
+
+can take method arguments (mapped params)
+may invoke another controller (through APP)
+may redirect to route (redirect response object)
+
+returns response object. if the response has not been sent from the action,
+    use the return of the action method as response body
+
+returns view object.
+    view tells the response object how to output format
+
+
+multi-format-requests/responses
+    use cakephp style serialization feature for json,xml
+
+
+
+VIEW:
+
+collection of variables, which will be used in the rendering process (e.g. in templates)
+may use templates (respect format specific templates)
+
+
+
+REQUEST:
+
+controller
+action
+output format
+may have (query) params
+may have form data
+may have upload data
+
+
+RESPONSE:
+
+response status code
+response status msg
+response headers
+response body
+
+
+
+ROUTING:
+
+routing is optional!
+maps a route path to a specific controller-action
+
+
+
+ROUTE:
+
+path
+handler
+query params to action args
+
+
+Reserved query params:
+
+_sc = Controller
+_sca = ControllerAction
+
+_sr = Route path
+
+
+
+Default routes:
+--
+
+# controllers
+/{controller}/{action}
+/{controller}
+/
+
+# extensions
+/x/{ext}/{controller}/{action}
+/x/{ext}/{controller}
+
+
+# static
+/s/{id}
+
+
+
+Prefixed routes:
+--
+
+/{prefix}/{controller}/{action}
+/{prefix}/{controller}/{action}
+
+
+
+No-pretty-urls:
+
+index.php?route=/artists/view?id=1
+
+
+REQUEST HANDLING:
+
+takes REQUEST and RESPONSE object
+
+1. Routing ( match request )
+Router takes the path from request and checks for matches
+Router takes the request method from request and checks for matches
+
+2. Dispatching ( handle route )
+Asset dispatching (return static files from a folder)
+Cache dispatching (return a cached response)
+Controller dispatching (invoke a controller to generate response)
+- get controller, action, params and response format from request. form or upload data may be available
+- invoke controller action with params
+-- a) return echoed output (buffered content)
+-- b) return a response object
+-- c) return a view
+-- d) return a string
+-- e) return an object that can be converted toString (e.g. ViewTemplate object)
+-- f) return NULL --> checks for view instance and renders it
+-- g) return callable --> ???
+
+
+

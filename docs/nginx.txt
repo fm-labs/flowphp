@@ -1,0 +1,55 @@
+# EXAMPLE NGINX VHOST CONFIGURATION FOR SLIKK PHP
+
+server {
+	listen 80;
+	server_name ~^(www\.)?(?<sname>.+?).flowphp.local$;
+	root /var/www/flowphp/flowphp-$sname/src;
+
+	index index.php index.html index.htm;
+
+	#rewrite ^(.*) http://flowphp.local$1 permanent;
+
+	autoindex on;
+
+	location / {
+		try_files $uri $uri/ /index.php?$args;
+	}
+
+	location = /favicon.ico { access_log off; log_not_found off; }
+	location = /robots.txt  { access_log off; log_not_found off; }
+
+	access_log /var/log/nginx/flowphp-$sname-access.log;
+	error_log  /var/log/nginx/flowphp-error.log debug;
+
+	error_page 404 /index.php;
+
+	sendfile off;
+
+	#error_page 404 /404.html;
+
+	# redirect server error pages to the static page /50x.html
+	#
+	#error_page 500 502 503 504 /50x.html;
+	#location = /50x.html {
+	#	root /usr/share/nginx/html;
+	#}
+
+
+	location ~ \.php$ {
+		try_files $uri =404;
+		include /etc/nginx/fastcgi_params;
+		#fastcgi_pass    127.0.0.1:9000;
+		fastcgi_pass unix:/var/run/php5-fpm.sock;
+		fastcgi_index   index.php;
+		fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+		fastcgi_param SERVER_NAME $host
+	}
+
+
+	location ~ /\.ht {
+		deny all;
+	}
+
+
+}
+
