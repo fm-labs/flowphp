@@ -1,4 +1,5 @@
 <?php
+
 namespace Flow\Template;
 
 use Flow\Object\ConfigTrait;
@@ -11,24 +12,78 @@ class Template
 
     protected $defaultConfig = [
         'baseDir' => 'templates/',
+        'baseUrl' => '/',
         'ext' => 'phtml'
     ];
 
+    /**
+     * @var array Template vars
+     */
     protected $vars = [];
 
+    /**
+     * @var string Template path relative to base dir
+     */
     protected $template;
+
+    /**
+     * @var string Layout template path relative to base dir
+     */
+    protected $layout;
+
+    /**
+     * @var array Map of attached helpers
+     */
+    protected $helpers = [];
 
     public function __construct(array $config = [])
     {
         $this->config($config);
+
+        $this->addHelper('css', function ($uri = null, $options = []) {
+            $uri = $this->getAssetUri($uri);
+            return sprintf('<link rel="stylesheet" href="%s">', $uri);
+        });
+        $this->addHelper('script', function ($uri = null, $options = []) {
+            $uri = $this->getAssetUri($uri);
+            return sprintf('<script src="%s">', $uri);
+        });
+        $this->addHelper('link', function ($title = "", $uri = null, $options = []) {
+            return sprintf('<a href="%s">%s</a>', $uri, $title);
+        });
+        $this->addHelper('textBold', function ($str = "") {
+            return sprintf('<span style="font-weight: bold;">%s</span>', $str);
+        });
     }
 
-    public function setTemplate($template)
+    public function __call($helper, $args = [])
     {
-        //if (!is_string($template) && !is_null($template)) {
-        //    throw new \InvalidArgumentException('Param $template expects NULL or STRING');
-        //}
+        $helper = $this->helpers[$helper] ?? null;
+        if (!$helper) {
+            throw new \RuntimeException("Template helper not loaded: $helper");
+        }
+
+        return call_user_func_array($helper, $args);
+    }
+
+    public function addHelper($helperName, callable $helper)
+    {
+        $this->helpers[$helperName] = $helper;
+
+        return $this;
+    }
+
+    public function setTemplate(string $template)
+    {
         $this->template = $template;
+
+        return $this;
+    }
+
+    public function setLayout(string $layout)
+    {
+        $this->layout = $layout;
+
         return $this;
     }
 
@@ -45,7 +100,7 @@ class Template
         return $this;
     }
 
-    public function get($key = null)
+    public function get($key = null, $default = null)
     {
         if ($key === null) {
             return $this->vars;
@@ -54,7 +109,38 @@ class Template
             return $this->vars[$key];
         }
 
-        return null;
+        return $default;
+    }
+
+    protected function renderLayout()
+    {
+        $layout = (new Template($this->config))
+            ->setTemplate($this->layout)
+            ->setLayout("")
+            ->set($this->vars);
+
+        return $layout->render();
+    }
+
+    protected function getTemplatePath($template)
+    {
+        return $this->config('baseDir') . $template . "." . $this->config('ext');
+    }
+
+    protected function getAssetPath($path)
+    {
+        if (preg_match('/^http/', $path) || preg_match('/\/\//', $path)) {
+            return $path;
+        }
+        return dirname($this->config('baseDir')) . '/assets/' . $path;
+    }
+
+    protected function getAssetUri($path)
+    {
+        if (preg_match('/^http/', $path) || preg_match('/\/\//', $path)) {
+            return $path;
+        }
+        return $this->config('baseUrl') . 'assets/' . $path;
     }
 
     public function render()
@@ -64,15 +150,27 @@ class Template
         }
 
         //$templatePath = preg_replace('@\/@', DIRECTORY_SEPARATOR, $this->template);
-        $templatePath = $this->config('baseDir') . $this->template . "." . $this->config('ext');
+        $templatePath = $this->getTemplatePath($this->template);
         if (!file_exists($templatePath)) {
             return "Template not found: $templatePath";
         }
 
-        ob_start();
-        include ($templatePath);
-        $buffer = ob_get_clean();
-        return $buffer;
+        $renderer = function ($templatePath) {
+            extract($this->vars);
+            ob_start();
+            include($templatePath);
+            $buffer = ob_get_clean();
+            return $buffer;
+        };
+
+        $content = $renderer($templatePath);
+
+        if ($this->layout) {
+            $this->set('content', $content);
+            $content = $this->renderLayout();
+        }
+
+        return $content;
     }
 
     public function __toString()
