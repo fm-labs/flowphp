@@ -564,11 +564,11 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
         //@todo
         return (isset($this->SERVER['HTTP_REFERER'])) ? $this->SERVER['HTTP_REFERER'] : null;
 
-        if (isset($this->SERVER['REDIRECT_URL'])) {
-            return substr($this->SERVER['REDIRECT_URL'], strlen($this->SERVER['SLIKK_APPURL']) - 1);
-        }
+        //if (isset($this->SERVER['REDIRECT_URL'])) {
+        //    return substr($this->SERVER['REDIRECT_URL'], strlen($this->SERVER['SLIKK_APPURL']) - 1);
+        //}
 
-        return null;
+        //return null;
     }
 
     /**
@@ -579,65 +579,4 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
     {
         return $this->SERVER['PATH_INFO'] ?? "";
     }
-
-
-
-
-    /*
-    public function getInput()
-    {
-        if ($this->input === null) {
-            $this->parseInput();
-        }
-        return $this->input;
-    }
-
-    protected function parseQuery($query = null)
-    {
-        if (is_null($query)) {
-            $query = $_GET;
-        }
-
-        //@todo check
-        if (ini_get('magic_quotes_gpc') === '1') {
-            $query = stripslashes_deep($query);
-        }
-
-        if ($this->SERVER['QUERY_STRING']) {
-            parse_str($this->SERVER['QUERY_STRING'], $query);
-        }
-
-        $this->query = $query;
-    }
-    protected function parseData($data = null)
-    {
-
-        if (!is_null($data)) {
-            return $data;
-
-        } elseif ($_POST) {
-            return $_POST;
-
-        } elseif ($this->is('json')) {
-            return json_decode($this->getInput(), true);
-
-        } elseif (($this->is('put') || $this->is('delete')) && $this->is('form')) {
-            $data = $this->getInput();
-            //@todo multibyte
-            parse_str($data, $this->data);
-        }
-
-        if (ini_get('magic_quotes_gpc') === '1') {
-            $this->data = stripslashes_deep($this->data);
-        }
-    }
-
-    protected function parseFiles($files = null)
-    {
-        if (is_null($files)) {
-            $files = $_FILES;
-        }
-        $this->files = $files;
-    }
-    */
 }

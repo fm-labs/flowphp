@@ -1,4 +1,5 @@
 <?php
+
 namespace Flow;
 
 use Flow\Http\Environment;
@@ -14,13 +15,13 @@ class Flow
     /**
      * @var string Library version string
      */
-    static protected $version = "0.1";
+    protected static $version = "0.1";
 
     /**
      * Boot method
      * - Loads global functions
      */
-    static public function boot()
+    public static function boot()
     {
         ini_set('display_errors', 1);
         error_reporting(E_ALL);
@@ -59,15 +60,22 @@ class Flow
      * Convenience method to start a http server
      * and run an app.
      *
-     * @param App\App $app
+     * @param \Flow\App\App|callable $app If a callable is used,
+     *    the callable MUST return an instance of `RequestHandlerInterface`
      */
-    static public function serve(\Flow\App\App $app)
+    public static function serve(\Flow\App\App $app)
     {
-        $env = Environment::fromGlobals();
-        //$server = static::$serverFactory($env);
-        $server = new \Flow\Http\Server\Server($env);
-        $server->run($app);
-        //static::get('server', 'http_server')->run($app);
+        try {
+            $handler = $app();
+            $env = Environment::fromGlobals();
+            $server = (new \Flow\Http\Server\Server())
+                ->setEnvironment($env)
+                ->run($handler);
+            //static::get('server', 'http_server')->run($app);
+        } catch (\Exception $ex) {
+            // @todo Error logging
+            die("[CRITICAL] Unhandled Server Error: " . $ex->getMessage());
+        }
     }
 
     /**
@@ -77,7 +85,7 @@ class Flow
      * @param $args
      * @throws \Exception
      */
-    static public function __callStatic($method, $args)
+    public static function __callStatic($method, $args)
     {
         // @todo Implement magic static call
         throw new \Exception("Not implemented");

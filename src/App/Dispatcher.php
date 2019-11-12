@@ -3,9 +3,14 @@ namespace Flow\Core;
 
 use Flow\Http\Message\Request;
 use Flow\Http\Message\Response;
-use Flow\Router\Route;
+use Flow\Router\LegacyRoute;
 use Flow\Router\Router;
 
+/**
+ * Class Dispatcher
+ * @package Flow\Core
+ * @deprecated Use MiddlewareQueue instead
+ */
 class Dispatcher {
 
     /**
@@ -20,7 +25,7 @@ class Dispatcher {
     private $activeRouter;
 
     /**
-     * @var Route
+     * @var LegacyRoute
      */
     private $activeRoute;
 
@@ -72,11 +77,11 @@ class Dispatcher {
      * c) A string
      * d)
      *
-     * @param Route $route
+     * @param LegacyRoute $route
      * @return Response
      * @throws \Exception
      */
-    private function handleRoute(Route $route)
+    private function handleRoute(LegacyRoute $route)
     {
 
 

@@ -46,7 +46,7 @@ class MiddlewareQueue implements RequestHandlerInterface
     {
         if (empty($this->queue)) {
             //throw new NotFoundException();
-            throw HttpException::notFound();
+            throw HttpException::notFound(sprintf("No handler found for '%s'", $request->getUri()));
         }
 
         /** @var MiddlewareInterface $middleware */

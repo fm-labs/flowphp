@@ -1,6 +1,8 @@
 <?php
+
 namespace Flow\App;
 
+use Flow\Object\ConfigInterface;
 use Flow\Template\Template;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
@@ -40,11 +42,11 @@ use Flow\_View\View;
  */
 class App extends Container implements RequestHandlerInterface, ResponseFactoryInterface, ResponseEmitterInterface
 {
-    static private $singletonProtectGet = true; //@see SingletonTrait
-    //static private $singletonProtectSet = true; //@see SingletonTrait
-
     use SingletonTrait;
     use ResponseEmitterTrait;
+
+    private static $singletonProtectGet = true; //@see SingletonTrait
+    //static private $singletonProtectSet = true; //@see SingletonTrait
 
     protected $defaultConfig = [
         'ignoreReady' => true
@@ -64,10 +66,7 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
         'route.after' => []
     ];
 
-    /**
-     * @var bool Ready state flag
-     */
-    protected $ready = false;
+    protected $plugins = [];
 
     /**
      * Init the application
@@ -86,17 +85,23 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
         $this->config = new Configuration($config);
         $this->router = new Router();
         $this->middlewares = new MiddlewareQueue();
+
+        $this->setup();
+    }
+
+    public function setup()
+    {
         // Insert the ErrorMiddleware first, to catch errors in all subsequent middlewares
-        $this->useMiddleware(new ErrorMiddleware($this));
-        $this->useMiddleware(new RequestMapperMiddleware($this));
-        $this->useMiddleware(new CorsMiddleware($this));
+        $this->middleware(new ErrorMiddleware($this));
+        $this->middleware(new RequestMapperMiddleware($this));
+        $this->middleware(new CorsMiddleware($this));
     }
 
     /**
      * @param MiddlewareInterface $middleware
      * @return $this
      */
-    public function useMiddleware(MiddlewareInterface $middleware)
+    public function middleware(MiddlewareInterface $middleware)
     {
         $this->middlewares->add($middleware);
 
@@ -152,11 +157,20 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
     }
 
     /**
-     * Magic object invocation as container getter
+     * Magic object invocation spawns new object instances from the factory.
+     * If the spawned instance implements the `ConfigInterface` and
+     * and the object id matches an app config key, the corresponding configuration
+     * will be injected
+     *
      */
-    public function __invoke($id)
+    public function __invoke()
     {
-        //return $this->get($id);
+        // routing-middleware-as-last-middleware - work-around
+        // this is suboptimal for _future_ subsequent/nested handle() calls
+        // as the RoutingMiddleware would be re-attached each time.
+        $this->middleware(new RoutingMiddleware($this));
+
+        return $this;
     }
 
     /**
@@ -164,7 +178,12 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
      */
     public function __call($method, $args)
     {
-        //return $this->get($method);
+        $obj = $this->spawn($method, $args);
+        if ($obj instanceof ConfigInterface) {
+            $obj->config($this->config($method));
+        }
+
+        return $obj;
     }
 
     //*****************************************************************
@@ -182,29 +201,34 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
         return $template;
     }
 
+    /**
+     * Attach a plugin.
+     *
+     * The plugin handler must be a callable object.
+     * The only argument passed to the handler is the instance of the application.
+     *
+     * @param string $pluginName The name of the plugin
+     * @param null|callable $plugin
+     * @return |null
+     * @throws \Exception
+     */
+    public function plugin(string $pluginName, $plugin = null)
+    {
+        if ($plugin !== null) {
+            if (!is_callable($plugin)) {
+                throw new \InvalidArgumentException("App: Plugin MUST be callable");
+            }
+
+            return $this->plugins[$pluginName] = $plugin($this);
+        }
+
+        // @TODO Throw new MissingPluginException
+        return ($this->plugins[$pluginName]) ?? null;
+    }
+
     //*****************************************************************
     //*** DISPATCHING ***
     //*****************************************************************
-
-    /**
-     * Signal that the application setup is complete.
-     *
-     * @param null $callback
-     * @todo Find a better way to determine the ready state (or to position routing middleware at the end of the queue)
-     */
-    private function ready()
-    {
-        if (!$this->ready) {
-            // routing-middleware-as-last-middleware--work-around
-            // this is suboptimal for _future_ subsequent/nested handle() calls
-            // as the RoutingMiddleware would be re-attached each time.
-            $this->useMiddleware(new RoutingMiddleware($this));
-
-            // @todo Dispatch app.ready event
-
-            $this->ready = true;
-        }
-    }
 
     /**
      * Handles a request and produces a response.
@@ -214,13 +238,10 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        if (!$this->ready) {
-            //debug("Application is not in ready state");
-            $this->ready();
-        }
-
         $this->request = $request;
         $this->response = new Response();
+
+        // @TODO Map ServerRequest to AppRequest
 
         // create a response based on the current request
         // deprecated: Use RequestMapperMiddleware instead
@@ -364,7 +385,7 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
         }
         */
 
-        $response = new \Flow\Http\Message\Response\RedirectResponse($this->url($url), $status);
+        $response = new \Flow\Http\Message\Response\RedirectResponse($this->uri($url), $status);
         $this->send($response);
         $this->stop();
     }
@@ -387,6 +408,7 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
         }
 
         $this->sendResponse($response);
+        $this->stop();
     }
 
     public function text(string $str)
@@ -396,7 +418,6 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
             ->withBody(new StringStream($str));
 
         $this->send($response);
-        //$this->stop();
     }
 
     public function html(string $html)
@@ -406,18 +427,37 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
             ->withBody(new StringStream($html));
 
         $this->send($response);
-        //$this->stop();
     }
 
-    public function json(array $data)
+    /**
+     * @param array|string $data
+     */
+    public function json($data)
     {
+        $encode = true;
+        if (is_string($data) || is_object($data) || method_exists($data, '__toString')) {
+            $data = (string)$data;
+            // check if it's a valid json string FORMAT (does not mean it's valid JSON!)
+            if (substr($data, 0, 1) == "{" && substr($data, -1) == "}") {
+                $encode = false;
+            // all other strings will be converted to an array
+            } else {
+                $data = ['content' => $data];
+            }
+        } elseif (!is_array($data)) {
+            throw new \InvalidArgumentException("Can not send JSON response: Malformed data");
+        }
+
+        if ($encode) {
+            $data = json_encode($data, JSON_PRETTY_PRINT); // @todo disable pretty printing
+        }
+
         $response = $this->response
             ->withoutHeader('Content-Type')
             ->withHeader('Content-Type', 'application/json')
-            ->withBody(new StringStream(json_encode($data, JSON_PRETTY_PRINT))); // @todo disable pretty printing
+            ->withBody(new StringStream($data));
 
         $this->send($response);
-        //$this->stop();
     }
 
     public function xml(string $xmlStr)
@@ -427,7 +467,6 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
             ->withBody(new StringStream($xmlStr));
 
         $this->send($response);
-        //$this->stop();
     }
 
     /**
@@ -636,8 +675,7 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
         // base uri is the uri of current request, without query and fragment
         $base = new Uri($this->request->getUri()
             ->withQuery("")
-            ->withFragment("")
-        );
+            ->withFragment(""));
 
         $uri = (new Uri($uri))
             ->withScheme($base->getScheme())
@@ -745,5 +783,4 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
     exit;
     }
      */
-
 }

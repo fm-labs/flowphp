@@ -1,14 +1,13 @@
 <?php
 namespace Flow\App\Middleware;
 
+use Flow\App\App;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
-use Flow\App\App;
 use Flow\Http\Message\Stream\StringStream;
 use Flow\Http\Message\Response;
 use Flow\App\Middleware;
-use Flow\Http\Server\RequestMapper;
 use Flow\Router\Route;
 use Flow\Router\Router;
 
@@ -21,6 +20,18 @@ class RoutingMiddleware extends Middleware
     protected $activeRoute;
 
     /**
+     * @var Router
+     */
+    protected $activeRouter;
+
+    public function __construct(App $app)
+    {
+        parent::__construct($app);
+
+        $this->activeRouter = $this->app->router;
+    }
+
+    /**
      * Process an incoming server request.
      *
      * Processes an incoming server request in order to produce a response.
@@ -30,15 +41,28 @@ class RoutingMiddleware extends Middleware
      */
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
-        $router = $this->app->router;
+        $router =& $this->activeRouter;
 
-        // @todo Get only first match from router
+        /*
         foreach ($router->matches($request) as $route) {
             $result = $this->handleRoute($route, $request);
             if ($result instanceof ResponseInterface) {
                 return $result;
             }
+            break;
         }
+        */
+
+        $route = $router->match($request);
+        if ($route) {
+            $result = $this->handleRoute($route, $request);
+            if ($result instanceof ResponseInterface) {
+                return $result;
+            }
+        }
+
+        print_routes($router->getRoutes());
+        throw new \Exception(sprintf("No route match for '%s'", $request->getUri()));
 
         return $handler->handle($request);
     }
@@ -150,7 +174,8 @@ class RoutingMiddleware extends Middleware
                 $response = $response->withBody(new StringStream(""));
             // CALLABLE results (nested handlers)
             } elseif (is_callable($result)) {
-                $response = $this->executeHandler($result, $route, $request, $response);
+                //@todo also pass route args recursively?
+                $response = $this->executeHandler($request, $response, $result/*, $args*/);
             // INVALID results
             } else {
                 throw new \RuntimeException("Router: Malformed handler result");

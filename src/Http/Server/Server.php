@@ -9,6 +9,11 @@ use Flow\App\App;
 use Flow\Http\Environment;
 use Flow\Object\StaticFactoryTrait;
 
+/**
+ * Class Server
+ * @package Flow\Http\Server
+ * @todo Remove dependency on Environment class
+ */
 class Server implements ResponseEmitterInterface
 {
     use StaticFactoryTrait;
@@ -45,16 +50,12 @@ class Server implements ResponseEmitterInterface
      * emitting the obtained response to the client.
      *
      * @param App|RequestHandlerInterface $handler
+     * @throws \Exception
      */
     public function run(RequestHandlerInterface $handler)
     {
-        try {
-            $request = $this->env->createServerRequest("GET", "/", []);
-            $response = $handler->handle($request);
-            $this->sendResponse($response);
-        } catch (\Exception $ex) {
-            // @todo Error logging
-            die("[CRITICAL] Unhandled Server Error: " . $ex->getMessage());
-        }
+        $request = $this->env->createServerRequest("GET", "/", []);
+        $response = $handler->handle($request);
+        $this->sendResponse($response);
     }
 }

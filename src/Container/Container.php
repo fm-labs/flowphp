@@ -8,50 +8,31 @@ use Psr\Container\ContainerInterface;
 class Container implements ContainerInterface
 {
     /**
-     * @var array Map of object factories and item options
-     */
-    protected $registry = [];
-
-    /**
      * @var array Map of registered objects
      */
     protected $objects = [];
 
+    public function factory($id, callable $factory = null)
+    {
+        return $this->register('_factory_' . $id, $factory);
+    }
+
+    public function spawn($id, $args = [])
+    {
+        $factory = $this->get('_factory_' . $id);
+        return call_user_func_array($factory, $args);
+    }
+
     /**
      * Register a new object or factory.
-     * 
-     * Available options:
-     * - `protect`: boolean If TRUE, a re-register attempt with the same id will throw a ContainerException.
-     * - `single`: boolean If TRUE, an instance created from a factory will always be the same instance when resolved.
      *
      * @param $id
      * @param $obj
-     * @param array $opts 
      * @return $this
      */
-    public function register($id, $obj, $opts = [])
+    public function register($id, $obj)
     {
-        $opts += ['protected' => null, 'single' => null];
-
-        if (isset($this->registry[$id])) {
-            $_opts = $this->registry[$id]['opts'] ?? [];
-            $_protected = $_opts['protected'] ?? false;
-            if ($_protected) {
-                throw new ContainerException("Container REGISTER operation not allowed on already registered and protected item");
-            }
-        }
-
-        // We register callables as factories and
-        // all other values as named objects
-        if ($obj instanceof \Closure) {
-            $factory = $obj;
-            $obj = null;
-        } else {
-            $factory = null;
-            $opts['single'] = true;
-            $this->objects[$id] = $obj;
-        }
-        $this->registry[$id] = ['factory' => $factory, 'opts' => $opts];
+        $this->objects[$id] = $obj;
 
         return $this;
     }
@@ -67,10 +48,6 @@ class Container implements ContainerInterface
             $this->objects[$id] = null;
             unset($this->objects[$id]);
         }
-
-        if (isset($this->registry[$id])) {
-            unset($this->registry[$id]);
-        }
     }
 
     /**
@@ -79,30 +56,11 @@ class Container implements ContainerInterface
     public function get($id)
     {
         $obj = $this->objects[$id] ?? null;
-        if ($obj) {
-            return $obj;
+        if (!$obj) {
+            throw new NotFoundException();
         }
 
-        // try to construct object from a factory, if registered
-        $reg = $this->registry[$id] ?? null;
-        if ($reg === null) {
-            throw new NotFoundException("Container GET: Unknown object identifier `" . $id . "`");
-        }
-
-        $factory = $reg['factory'];
-        $opts = $reg['opts'];
-
-        if (is_callable($factory)) {
-            $obj = $factory();
-            if ($obj) {
-                if ($opts['single'] === true) {
-                    $this->objects[$id] = $obj;
-                }
-                return $obj;
-            }
-        }
-
-        throw new NotFoundException("Container ITEM not Found: `" . $id . "`");
+        return $obj;
     }
 
     /**
@@ -110,7 +68,7 @@ class Container implements ContainerInterface
      */
     public function has($id)
     {
-        return isset($this->registry[$id]);
+        return isset($this->objects[$id]);
     }
 
 }
