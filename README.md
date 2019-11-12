@@ -2,7 +2,7 @@
 
 PHP micro framework
 
-[![Build Status](https://travis-ci.org/fm-labs/flowphp.svg?branch=master)](https://travis-ci.org/fm-labs/php-uri)
+[![Build Status](https://travis-ci.org/fm-labs/flowphp.svg?branch=master)](https://travis-ci.org/fm-labs/flowphp)
 
 ## Requirements
 
