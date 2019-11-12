@@ -17,7 +17,7 @@ trait ConfigTrait
 
     /**
      * @param null|string|array $key
-     * @return array|null
+     * @return array|mixed|null
      */
     public function config($key = null)
     {
