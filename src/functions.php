@@ -29,3 +29,19 @@ function h($string)
 
     return htmlentities($string, null, 'UTF-8');
 }
+
+function print_routes($routes)
+{
+    $html = "<table style='width: 100%;'><tr><th>Name</th><th>Route</th><th>Compiled</th></tr>";
+    /* @var \Flow\Router\Route $route */
+    foreach ($routes as $route) {
+        $html .= sprintf(
+            "<tr><td>%s</td><td>%s</td><td>%s</td></tr>",
+            $route->getName(),
+            $route->getRoute(),
+            $route->getCompiled()
+        );
+    }
+
+    echo $html;
+}
