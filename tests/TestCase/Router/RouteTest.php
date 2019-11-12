@@ -2,120 +2,20 @@
 
 namespace Flow\Test\Router;
 
+use Flow\Http\Message\Request;
+use Flow\Http\Message\Uri;
 use Flow\Router\Route;
 
 class RouteTest extends \PHPUnit\Framework\TestCase
 {
-    public function testConstruct()
+    protected function mockRequest($method = "GET", $path = "/", $query = [], $data = [])
     {
-        $r = new Route('/');
-        $this->assertEquals('/', $r->getRoute());
-
-        $r = new Route('/', array(
-            'defaults' => array('foo' => 'bar'),
-            'pass' => array('foo'),
-        ));
+        $req = (new Request())
+            ->withMethod($method)
+            ->withUri((new Uri())->withPath($path))
+        ;
+        return $req;
     }
-
-    /**
-     * @group describe
-     */
-    public function testDescribe()
-    {
-        $r = new Route('/');
-        $r->describe();
-        $this->assertEquals(array(), $r->schema);
-
-        $r = new Route('/{controller}/{action}');
-        $r->describe();
-        $expected = array(
-            array(
-                'type' => 'named',
-                'name' => 'controller',
-                'pattern' => '([\w]+)',
-                'optional' => false
-            ),
-            array(
-                'type' => 'named',
-                'name' => 'action',
-                'pattern' => '([\w]+)',
-                'optional' => false
-            )
-        );
-        $this->assertEquals($expected, $r->schema);
-
-        $r = new Route('/{foo}-{bar}/{action}/*');
-        $r->describe();
-        $expected = array(
-            array(
-                'type' => 'named',
-                'name' => 'foo',
-                'pattern' => '([\w]+)',
-                'optional' => false
-            ),
-            array(
-                'type' => 'named',
-                'name' => 'bar',
-                'pattern' => '([\w]+)',
-                'optional' => false
-            ),
-            array(
-                'type' => 'named',
-                'name' => 'action',
-                'pattern' => '([\w]+)',
-                'optional' => false
-            ),
-            array(
-                'type' => 'wildcard',
-                'mode' => 'non-greedy',
-                'pattern' => '(.+)/'
-            )
-        );
-        $this->assertEquals($expected, $r->schema);
-
-        $r = new Route('/foo/{?maybe}');
-        $r->describe();
-        $expected = array(
-            array(
-                'type' => 'named',
-                'name' => 'maybe',
-                'pattern' => '([\w]+)?',
-                'optional' => true
-            ),
-        );
-        $this->assertEquals($expected, $r->schema);
-    }
-
-    /**
-     * @group match
-     */
-    public function testMatchPath()
-    {
-        $r = new Route('/');
-        $this->assertTrue($r->matchPath('/'));
-
-        $r = new Route('/foo');
-        $this->assertTrue($r->matchPath('/foo'));
-
-        $r = new Route('/foo/bar');
-        $this->assertTrue($r->matchPath('/foo/bar'));
-    }
-
-    /**
-     * @group match
-     */
-    public function testMatchPathWithPrefix()
-    {
-        $r = new Route('/', array('prefix' => '/test'));
-        $this->assertTrue($r->matchPath('/test/'));
-
-        $r = new Route('/foo', array('prefix' => '/test'));
-        $this->assertTrue($r->matchPath('/test/foo'));
-
-        $r = new Route('/foo/bar', array('prefix' => '/test'));
-        $this->assertTrue($r->matchPath('/test/foo/bar'));
-    }
-
 
     /**
      * @group match
@@ -123,12 +23,9 @@ class RouteTest extends \PHPUnit\Framework\TestCase
     public function testMatchRoot()
     {
         $r = new Route('/');
-        // compile
-        //$r->compile();
-        //$this->assertEquals('\/', $r->getCompiled());
+        $r->setPrefix("");
 
-        // match
-        $this->assertTrue($r->matchPath("/"));
+        $this->assertTrue($r->match($this->mockRequest("GET", "/")));
     }
 
     /**
@@ -137,23 +34,15 @@ class RouteTest extends \PHPUnit\Framework\TestCase
     public function testMatchStatic()
     {
         $r = new Route('/foo');
-        // compile
-        //$r->compile();
-        //$this->assertEquals('\/foo\/', $r->getCompiled());
 
-        // match
-        $this->assertTrue($r->matchPath("/foo/"));
-
+        $this->assertTrue($r->match($this->mockRequest("GET", "/foo")));
+        $this->assertTrue($r->match($this->mockRequest("GET", "/foo/")));
+        $this->assertFalse($r->match($this->mockRequest("GET", "/foo/bar")));
 
         $r = new Route('/foo/bar');
-        // compile
-        //$r->compile();
-        //$this->assertEquals('\/foo\/bar\/', $r->getCompiled());
-
-        // match
-        $this->assertTrue($r->matchPath("/foo/bar/"));
-        $this->assertFalse($r->matchPath("/foo/"));
-        $this->assertFalse($r->matchPath("/foo/bar/bla/"));
+        $this->assertTrue($r->match($this->mockRequest("GET", "/foo/bar")));
+        $this->assertTrue($r->match($this->mockRequest("GET", "/foo/bar/")));
+        $this->assertFalse($r->match($this->mockRequest("GET", "/foo")));
     }
 
     /**
@@ -162,26 +51,13 @@ class RouteTest extends \PHPUnit\Framework\TestCase
     public function testMatchWithNamedParams()
     {
         $r = new Route('/{controller}/');
-        // compile
-        //$r->compile();
-        //$this->assertEquals('\/([\w]+)\/', $r->getCompiled());
-
-        // match
-        $this->assertTrue($r->matchPath("/foo/"));
-        $this->assertEquals($r->getParams('controller'), 'foo');
+        $req = $this->mockRequest("GET", "/foo");
+        $this->assertTrue($r->match($req));
+        $this->assertEquals(['controller' => 'foo'], $r->getParams());
 
         $r = new Route('/{controller}/{action}/');
-        // compile
-        //$r->compile();
-        //$this->assertEquals('\/([\w]+)\/([\w]+)\/', $r->getCompiled());
-
-        // match
-        $this->assertTrue($r->matchPath("/foo/index"));
-        $this->assertEquals($r->getParams('controller'), 'foo');
-        $this->assertEquals($r->getParams('action'), 'index');
-
-        $this->assertFalse($r->matchPath('/foo/bar/1'));
-        $this->assertFalse($r->matchPath('/foo/bar/test'));
+        $this->assertTrue($r->match($this->mockRequest("GET", "/foo/edit")));
+        $this->assertEquals(['controller' => 'foo', 'action' => 'edit'], $r->getParams());
     }
     /**
      * @group match
@@ -189,15 +65,24 @@ class RouteTest extends \PHPUnit\Framework\TestCase
      */
     public function testMatchWithOptionalNamedParams()
     {
+        $this->markTestIncomplete();
         $r = new Route('/foo/{?optional}');
-        // compile
-        //$r->compile();
-        //$this->assertEquals('\/foo\/([\w]+)?\/?', $r->getCompiled());
+        $req = $this->mockRequest("GET", "/foo");
+        $this->assertTrue($r->match($req));
+        $this->assertEquals([], $r->getParams());
 
-        // match
-        $this->assertTrue($r->matchPath("/foo"));
-        $this->assertTrue($r->matchPath("/foo/bar"));
-        $this->assertEquals($r->getParams('optional'), 'bar');
+        $req = $this->mockRequest("GET", "/foo/bar");
+        $this->assertTrue($r->match($req));
+        $this->assertEquals(['optional' => 'bar'], $r->getParams());
+
+        $r = new Route('/foo/{?optional}/asdf');
+        $req = $this->mockRequest("GET", "/foo/asdf");
+        $this->assertTrue($r->match($req));
+        $this->assertEquals(['optional' => 'asdf'], $r->getParams());
+
+        $req = $this->mockRequest("GET", "/foo/bar/asdf");
+        $this->assertTrue($r->match($req));
+        $this->assertEquals(['optional' => 'bar'], $r->getParams());
     }
 
     /**
@@ -207,37 +92,24 @@ class RouteTest extends \PHPUnit\Framework\TestCase
     public function testMatchWithNonGreedyWildcardParams()
     {
         $r = new Route('/foo/*');
-        // compile
-        //$r->compile();
-        //$this->assertEquals('\/foo\/(.+)\/', $r->getCompiled());
+        $req = $this->mockRequest("GET", "/foo");
+        $this->assertFalse($r->match($req));
 
-        // match
-        $this->assertFalse($r->matchPath('/foo'));
+        $req = $this->mockRequest("GET", "/foo/bar");
+        $this->assertTrue($r->match($req));
+        //$this->assertEquals(['*' => 'bar'], $r->getParams());
 
-        $this->assertTrue($r->matchPath("/foo/bar"));
-        $this->assertEquals($r->getParams(0), 'bar');
+        $req = $this->mockRequest("GET", "/foo/bar/asdf");
+        $this->assertFalse($r->match($req));
 
-        $this->assertTrue($r->matchPath("/foo/0"));
-        $this->assertEquals($r->getParams(0), 0);
-
-        $this->assertTrue($r->matchPath("/foo/bar/hello"));
-        $this->assertEquals($r->getParams(0), 'bar');
-        $this->assertEquals($r->getParams(1), 'hello');
-
-        $r = new Route('/{controller}/*');
-        // compile
-        //$r->compile();
-        //$this->assertEquals('\/([\w]+)\/(.+)\/', $r->getCompiled());
-
-        // match
-        $this->assertTrue($r->matchPath("/foo/index"));
-        $this->assertEquals($r->getParams('controller'), 'foo');
-        $this->assertEquals($r->getParams(0), 'index');
-
-        $this->assertTrue($r->matchPath("/foo/index/action"));
-        $this->assertEquals($r->getParams('controller'), 'foo');
-        $this->assertEquals($r->getParams(0), 'index');
-        $this->assertEquals($r->getParams(1), 'action');
+        $r = new Route('/foo/*/more');
+        $req = $this->mockRequest("GET", "/foo");
+        $this->assertFalse($r->match($req));
+        $req = $this->mockRequest("GET", "/foo/bar");
+        $this->assertFalse($r->match($req));
+        $req = $this->mockRequest("GET", "/foo/bar/more");
+        $this->assertTrue($r->match($req));
+        $this->assertEquals(['_wildcard' => ['bar']], $r->getParams());
     }
 
     /**
@@ -247,28 +119,21 @@ class RouteTest extends \PHPUnit\Framework\TestCase
     public function testMatchWithGreedyWildcardParams()
     {
         $r = new Route('/foo/**');
-        // compile
-        //$r->compile();
-        //$this->assertEquals('\/foo\/(.*)', $r->getCompiled());
+        $req = $this->mockRequest("GET", "/foo");
+        $this->assertFalse($r->match($req));
 
-        // match
-        $this->assertTrue($r->matchPath('/foo'));
+        $req = $this->mockRequest("GET", "/foo/bar");
+        $this->assertTrue($r->match($req));
+        $this->assertEquals(['_wildcard' => ['bar']], $r->getParams());
 
-        $this->assertTrue($r->matchPath("/foo/bar/test/bla/"));
-        $this->assertEquals($r->getParams(0), 'bar/test/bla/');
-
-
-        // more complex wildcard route
-        $this->markTestSkipped('Complex wildcard routes are not implemented yet');
+        $req = $this->mockRequest("GET", "/foo/bar/has/another/subpath");
+        $this->assertTrue($r->match($req));
+        $this->assertEquals(['_wildcard' => ['bar/has/another/subpath']], $r->getParams());
 
         $r = new Route('/foo/**/bar');
-        $this->assertFalse($r->matchPath('/foo'));
-
-        $this->assertTrue($r->matchPath("/foo/test/bar/"));
-        $this->assertEquals($r->getParams(0), 'test/');
-
-        $this->assertTrue($r->matchPath("/foo/test/bla/bar/"));
-        $this->assertEquals($r->getParams(0), 'test/bla/');
+        $req = $this->mockRequest("GET", "/foo/has/another/subpath/at/bar");
+        $this->assertTrue($r->match($req));
+        $this->assertEquals(['_wildcard' => ['has/another/subpath/at']], $r->getParams());
 
 
     }
@@ -281,18 +146,12 @@ class RouteTest extends \PHPUnit\Framework\TestCase
     /**
      * @group match
      */
-    public function testMatchWithOrderedParams()
+    public function testMatchWithIndexedParams()
     {
         $r = new Route('/{controller}/{1}/{0}');
-        // compile
-        //$r->compile();
-        //$this->assertEquals('\/([\w]+)\/([\w]+)\/([\w]+)\/', $r->getCompiled());
-
-        // match
-        $this->assertTrue($r->matchPath("/foo/index/bar"));
-        $this->assertEquals($r->getParams('controller'), 'foo');
-        $this->assertEquals($r->getParams(0), 'bar');
-        $this->assertEquals($r->getParams(1), 'index');
+        $req = $this->mockRequest("GET", "/foo/a/b");
+        $this->assertTrue($r->match($req));
+        $this->assertEquals(['controller' => 'foo', '0' => "b", '1' => "a"], $r->getParams());
     }
 
     /**
@@ -306,84 +165,24 @@ class RouteTest extends \PHPUnit\Framework\TestCase
                 0 => '[\d]+',
             )
         ));
-        // compile
-        //$r->compile();
-        //$this->assertEquals('\/(test\-[\w]+)\/([\w]+)\/([\d]+)\/(.+)\/', $r->getCompiled());
+        $req = $this->mockRequest("GET", "/foo/index/123/c");
+        $this->assertFalse($r->match($req));
 
-        $this->assertFalse($r->matchPath('/foo/bar/1/hello'));
-        $this->assertFalse($r->matchPath('/test-foo/bar/hello/world'));
-
-        // match
-        $this->assertTrue($r->matchPath("/test-foo/index/25/foo/bar"));
-        $this->assertEquals($r->getParams('controller'), 'test-foo');
-        $this->assertEquals($r->getParams('action'), 'index');
-        $this->assertEquals($r->getParams(0), '25');
-        $this->assertEquals($r->getParams(1), 'foo');
-        $this->assertEquals($r->getParams(2), 'bar');
+        $req = $this->mockRequest("GET", "/test-me/index/123/c");
+        $this->assertTrue($r->match($req));
+        $this->assertEquals(['controller' => 'test-me', 'action' => "index", 0 => 123, '_wildcard' => ["c"]], $r->getParams());
     }
 
-    /**
-     * @group generate
-     */
-    public function testGenerate()
+
+    public function testMatchPrefixed()
     {
-        $r = new Route('/');
-        $this->assertFalse($r->generate(array('controller' => 'foo')));
-        $this->assertEquals('/', $r->generate());
+        $r = new Route('/', ['prefix' => '/mytest']);
+        $this->assertTrue($r->match($this->mockRequest("GET", "/mytest/")));
+        $this->assertTrue($r->match($this->mockRequest("GET", "/mytest")));
 
-        $r = new Route('/foo/{action}/');
-        $this->assertFalse($r->generate());
-        $this->assertFalse($r->generate(array('action' => '')));
-        $this->assertEquals('/foo/bar/', $r->generate(array('action' => 'bar')));
-
-        $r = new Route('/{controller}/{action}/');
-        $url = $r->generate(array('controller' => 'foo', 'action' => 'bar'));
-        $this->assertEquals('/foo/bar/', $url);
-        $this->assertFalse($r->generate(array('controller' => 'foo')));
-        $this->assertFalse($r->generate(array('controller' => 'foo', 'action' => '')));
-        $this->assertFalse($r->generate(array('controller' => '', 'action' => 'bar')));
-        $this->assertFalse($r->generate(array('controller' => '', 'action' => '')));
-
-    }
-
-    /**
-     * @group generate
-     * @group wildcard
-     */
-    public function testGenerateWithNonGreedyWildcard()
-    {
-        $r = new Route('/{controller}/{action}/*');
-        $this->assertFalse($r->generate(array('controller' => 'foo', 'action' => 'bar')));
-        $this->assertFalse($r->generate(array('foo' => 'bar')));
-        $this->assertFalse($r->generate(array('controller' => 'test', 'foo' => 'bar')));
-
-        $url = $r->generate(array('controller' => 'foo', 'action' => 'bar', 1));
-        $this->assertEquals('/foo/bar/1/', $url);
-
-        $url = $r->generate(array('controller' => 'foo', 'action' => 'bar', 'one', 'two'));
-        $this->assertEquals('/foo/bar/one/two/', $url);
-
-        $r = new Route('/{controller}/{action}/{1}-{0}/*');
-        $url = $r->generate(array('controller' => 'foo', 'action' => 'bar', 'one', 'two', 'three'));
-        $this->assertEquals('/foo/bar/two-one/three/', $url);
-
-    }
-
-    /**
-     * @group generate
-     * @group wildcard
-     */
-    public function testGenerateWithGreedyWildcard()
-    {
-        $r = new Route('/{controller}/{action}/**');
-        $url = $r->generate(array('controller' => 'foo', 'action' => 'bar', 'one/two/three'));
-        $this->assertEquals('/foo/bar/one/two/three/', $url);
-
-        $url = $r->generate(array('controller' => 'foo', 'action' => 'bar', 'one', 'two', 'three'));
-        $this->assertEquals('/foo/bar/one/two/three/', $url);
-
-        $url = $r->generate(array('controller' => 'foo', 'action' => 'bar'));
-        $this->assertEquals(false, $url);
+        $r = new Route('/foo/{controller}/{action}', ['prefix' => '/mytest']);
+        $this->assertTrue($r->match($this->mockRequest("GET", "/mytest/foo/mycontroller/myaction")));
+        $this->assertEquals(['controller' => 'mycontroller', 'action' => 'myaction'], $r->getParams());
     }
 
 }

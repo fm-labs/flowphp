@@ -56,8 +56,8 @@ class Router
      * @param Route|string $route
      * @param array|callable|null $options
      * @param callable|null $handler
-     * @throws \Exception
      * @return Route
+     *@throws \Exception
      */
     public function &connect($route, $options = null, callable $handler = null)
     {
@@ -68,12 +68,8 @@ class Router
 
         if (is_string($route)) {
             $route = new Route($route, $options, $handler);
-        } elseif ($route instanceof Route) {
-            if ($handler !== null) {
-                $route->setHandler($handler);
-            }
-        } else {
-            throw new Exception("Can not connect invalid route");
+        } elseif (!$route instanceof Route) {
+            throw new Exception("Invalid route");
         }
 
         $route->setPrefix($this->prefix);
@@ -87,18 +83,21 @@ class Router
      * Returns first matching route
      *
      * @param \Flow\Http\Message\Request $request
-     * @internal param \Flow\Http\Message\Request $req
      * @return Route
      */
     public function match(RequestInterface $request)
     {
         foreach ($this->routes as $route) {
-            if ($route->matches($request)) {
+            if ($route->match($request)) {
                 //print_r("Route found for $path -> " . $r->route . "\n");
+
                 //if ($route->getHandler() instanceof Router) {
+                //    /* @var static $_router */
                 //    $_router = $route->getHandler();
+                //    $_router->setPrefix($this->getPrefix() . $_router->getPrefix());
                 //    $route = $_router->match($request);
                 //}
+
                 return $route;
             }
         }
@@ -110,12 +109,13 @@ class Router
      *
      * @param RequestInterface $request
      * @return array
+     * @deprecated
      */
     public function matches(RequestInterface $request)
     {
         $matches = array();
         foreach ($this->routes as $route) {
-            if ($route->matches($request)) {
+            if ($route->match($request)) {
                 //print_r("Route found for " . $request->getPath() . " -> " . $route->getRoute() . "\n");
                 //var_dump($route->getHandler());
                 //if ($route->getHandler() instanceof Router) {

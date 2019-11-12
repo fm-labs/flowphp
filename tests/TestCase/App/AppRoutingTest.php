@@ -34,6 +34,7 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
             $response = new Response( 200);
             return $response->withBody(new StringStream('Hello'));
         });
+        $app();
 
         $request = ServerRequest::get('/');
         $response = $app->handle($request);
@@ -48,6 +49,7 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
         $app->connect('/', function () {
             return 'Hello';
         });
+        $app();
 
         $request = ServerRequest::get('/');
         $response = $app->handle($request);
@@ -64,6 +66,7 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
         $app->connect('/', function () {
             echo 'Hello';
         });
+        $app();
 
         $request = ServerRequest::get('/');
         $response = $app->handle($request);
@@ -82,6 +85,7 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
             return (new Response())
                 ->withBody(new StringStream('Hello'));
         });
+        $app();
 
         $request = ServerRequest::get('/');
         $response = $app->handle($request);
@@ -105,6 +109,7 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
         $app->after(function (App $app) use (&$middlewareTest) {
             $middlewareTest[] = 'after';
         });
+        $app();
 
         $app->handle(ServerRequest::get('/'));
 
@@ -128,6 +133,7 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
         $app->after(function (App $app) use (&$middlewareTest) {
             $middlewareTest[] = 'after';
         });
+        $app();
 
         $response = $app->handle(ServerRequest::get('/'));
 
@@ -156,6 +162,7 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
         $app->after(function (App $app) use (&$middlewareTest) {
             $middlewareTest[] = 'after';
         });
+        $app();
 
         $app->handle(ServerRequest::get('/'));
 
@@ -188,6 +195,7 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
         $app->after(function () use (&$middlewareTest) {
             $middlewareTest[] = 'after';
         });
+        $app();
 
         $response = $app->handle(ServerRequest::get('/'));
 
