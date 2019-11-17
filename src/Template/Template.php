@@ -2,6 +2,7 @@
 
 namespace Flow\Template;
 
+use Flow\Http\Message\Uri;
 use Flow\Object\ConfigTrait;
 use Flow\Object\StaticFactoryTrait;
 
@@ -48,7 +49,8 @@ class Template
             $uri = $this->getAssetUri($uri);
             return sprintf('<script src="%s">', $uri);
         });
-        $this->addHelper('link', function ($title = "", $uri = null, $options = []) {
+        $this->addHelper('link', function ($title = "", $uri = "#", $options = []) {
+            $uri = new Uri($uri);
             return sprintf('<a href="%s">%s</a>', $uri, $title);
         });
         $this->addHelper('textBold', function ($str = "") {
