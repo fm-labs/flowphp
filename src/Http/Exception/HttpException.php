@@ -1,8 +1,6 @@
 <?php
 
-
 namespace Flow\Http\Exception;
-
 
 use Flow\Http\StatusCode;
 use Throwable;
@@ -16,13 +14,18 @@ class HttpException extends \Exception
         parent::__construct($message, $code, $previous);
     }
 
-    static public function notFound($message = "")
+    public static function notFound($message = "")
     {
-        return new static($message, 404);
+        return new static($message, StatusCode::NOT_FOUND);
     }
 
-    static public function serverError($message = "")
+    public static function badRequest($message = "")
     {
-        return new static($message, 500);
+        return new static($message, StatusCode::BAD_REQUEST);
+    }
+
+    public static function serverError($message = "")
+    {
+        return new static($message, StatusCode::INTERNAL_SERVER_ERROR);
     }
 }
