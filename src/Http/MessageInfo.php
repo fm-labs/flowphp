@@ -1,4 +1,5 @@
 <?php
+
 namespace Flow\Http;
 
 use Psr\Http\Message\MessageInterface;
@@ -10,7 +11,7 @@ class MessageInfo
      *
      * @return int
      */
-    static public function getLength(MessageInterface $message)
+    public static function getLength(MessageInterface $message)
     {
         return strlen((string)$message->getBody());
     }
@@ -20,7 +21,7 @@ class MessageInfo
      *
      * @return bool
      */
-    static public function isSuccessful(MessageInterface $message)
+    public static function isSuccessful(MessageInterface $message)
     {
         return $message->getStatusCode() >= 200 && $message->getStatusCode() < 300;
     }
@@ -30,7 +31,7 @@ class MessageInfo
      *
      * @return bool
      */
-    static public function isRedirect(MessageInterface $message)
+    public static function isRedirect(MessageInterface $message)
     {
         return in_array($message->getStatusCode(), array(301, 302, 303, 307));
     }
@@ -40,7 +41,7 @@ class MessageInfo
      *
      * @return bool
      */
-    static public function isRedirection(MessageInterface $message)
+    public static function isRedirection(MessageInterface $message)
     {
         return $message->getStatusCode() >= 300 && $message->getStatusCode() < 400;
     }
@@ -50,7 +51,7 @@ class MessageInfo
      *
      * @return bool
      */
-    static public function isForbidden(MessageInterface $message)
+    public static function isForbidden(MessageInterface $message)
     {
         return $message->getStatusCode() === 403;
     }
@@ -60,7 +61,7 @@ class MessageInfo
      *
      * @return bool
      */
-    static public function isNotFound(MessageInterface $message)
+    public static function isNotFound(MessageInterface $message)
     {
         return $message->getStatusCode() === 404;
     }
@@ -70,7 +71,7 @@ class MessageInfo
      *
      * @return bool
      */
-    static public function isClientError(MessageInterface $message)
+    public static function isClientError(MessageInterface $message)
     {
         return $message->getStatusCode() >= 400 && $message->getStatusCode() < 500;
     }
@@ -80,9 +81,20 @@ class MessageInfo
      *
      * @return bool
      */
-    static public function isServerError(MessageInterface $message)
+    public static function isServerError(MessageInterface $message)
     {
         return $message->getStatusCode() >= 500 && $message->getStatusCode() < 600;
     }
 
+    public static function isJson(MessageInterface $message)
+    {
+        $contentType = $message->getHeader("Content-Type") ?? [];
+        return preg_match("/^(application\/json|text\/json)/", $contentType[0] ?? "");
+    }
+
+    public static function isFormUrlencoded(MessageInterface $message)
+    {
+        $contentType = $message->getHeader("Content-Type") ?? [];
+        return preg_match("/^(application\/x-www-form-urlencoded)/", $contentType[0] ?? "");
+    }
 }
