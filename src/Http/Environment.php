@@ -64,12 +64,17 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
 
     protected $FILES;
 
-    static public function fromGlobals()
+    public static function fromGlobals()
     {
         return new self($_SERVER, $_GET, $_POST, $_COOKIE, $_FILES);
     }
 
-    static public function fromArray(array $env)
+    /**
+     * @param array $env
+     * @return Environment
+     * @deprecated Use new Environment() instead
+     */
+    public static function fromArray(array $env)
     {
         return new self($env);
     }
@@ -87,7 +92,7 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
         $server['REQUEST_METHOD'] = "GET";
 
         $env = new self($server);
-        return $env->createServerRequest("POST", new Uri($path), $server);
+        return $env->createServerRequest("GET", new Uri($path), $server);
     }
 
     /**
@@ -116,7 +121,7 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
      * @deprecated Use Environment::fromArray() instead
      * @todo Remove from production code
      */
-    static public function mock($env = array())
+    public static function mock($env = array())
     {
         $env = array_merge(array(
             'SERVER_NAME' => 'localhost',
@@ -269,37 +274,42 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
      *     the generated request instance.
      *
      * @return ServerRequestInterface
+     * @todo Add support for X-Request-Method-Override header
+     * @todo Add support for Forwarded header https://tools.ietf.org/html/rfc7239
+     * @todo Add support for X-Forwarded-* headers
+     * @todo Add support for Cookies
+     * @todo Add support for Uploaded files
      */
     public function createServerRequest(string $method, $uri, array $serverParams = []): ServerRequestInterface
     {
         if (is_string($uri)) {
             $uri = new Uri($uri);
         }
-//$_REQUEST['query']	test
-//$_GET['query']	test
-//$_SERVER['DOCUMENT_ROOT']	/home/flow/workspaces/php/flowphp-examples/src
-//$_SERVER['REMOTE_ADDR']	127.0.0.1
-//$_SERVER['REMOTE_PORT']	56790
-//$_SERVER['SERVER_SOFTWARE']	PHP 7.1.23-4+ubuntu14.04.1+deb.sury.org+1 Development Server
-//$_SERVER['SERVER_PROTOCOL']	HTTP/1.1
-//$_SERVER['SERVER_NAME']	localhost
-//$_SERVER['SERVER_PORT']	9081
-//$_SERVER['REQUEST_URI']	/000-phpinfo/index.php?query=test
-//$_SERVER['REQUEST_METHOD']	GET
-//$_SERVER['SCRIPT_NAME']	/000-phpinfo/index.php
-//$_SERVER['SCRIPT_FILENAME']	/home/flow/workspaces/php/flowphp-examples/src/000-phpinfo/index.php
-//$_SERVER['PHP_SELF']	/000-phpinfo/index.php
-//$_SERVER['QUERY_STRING']	query=test
-//$_SERVER['HTTP_HOST']	localhost:9081
-//$_SERVER['HTTP_USER_AGENT']	Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:66.0) Gecko/20100101 Firefox/66.0
-//$_SERVER['HTTP_ACCEPT']	text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
-//$_SERVER['HTTP_ACCEPT_LANGUAGE']	en,en-US;q=0.5
-//$_SERVER['HTTP_ACCEPT_ENCODING']	gzip, deflate
-//$_SERVER['HTTP_DNT']	1
-//$_SERVER['HTTP_CONNECTION']	keep-alive
-//$_SERVER['HTTP_UPGRADE_INSECURE_REQUESTS']	1
-//$_SERVER['REQUEST_TIME_FLOAT']	1573181876.2998
-//$_SERVER['REQUEST_TIME']	1573181876
+//$_REQUEST['query']    test
+//$_GET['query']    test
+//$_SERVER['DOCUMENT_ROOT'] /home/flow/workspaces/php/flowphp-examples/src
+//$_SERVER['REMOTE_ADDR']   127.0.0.1
+//$_SERVER['REMOTE_PORT']   56790
+//$_SERVER['SERVER_SOFTWARE']   PHP 7.1.23-4+ubuntu14.04.1+deb.sury.org+1 Development Server
+//$_SERVER['SERVER_PROTOCOL']   HTTP/1.1
+//$_SERVER['SERVER_NAME']   localhost
+//$_SERVER['SERVER_PORT']   9081
+//$_SERVER['REQUEST_URI']   /000-phpinfo/index.php?query=test
+//$_SERVER['REQUEST_METHOD']    GET
+//$_SERVER['SCRIPT_NAME']   /000-phpinfo/index.php
+//$_SERVER['SCRIPT_FILENAME']   /home/flow/workspaces/php/flowphp-examples/src/000-phpinfo/index.php
+//$_SERVER['PHP_SELF']  /000-phpinfo/index.php
+//$_SERVER['QUERY_STRING']  query=test
+//$_SERVER['HTTP_HOST'] localhost:9081
+//$_SERVER['HTTP_USER_AGENT']   Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:66.0) Gecko/20100101 Firefox/66.0
+//$_SERVER['HTTP_ACCEPT']   text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+//$_SERVER['HTTP_ACCEPT_LANGUAGE']  en,en-US;q=0.5
+//$_SERVER['HTTP_ACCEPT_ENCODING']  gzip, deflate
+//$_SERVER['HTTP_DNT']  1
+//$_SERVER['HTTP_CONNECTION']   keep-alive
+//$_SERVER['HTTP_UPGRADE_INSECURE_REQUESTS']    1
+//$_SERVER['REQUEST_TIME_FLOAT']    1573181876.2998
+//$_SERVER['REQUEST_TIME']  1573181876
 
         // headers
         $headers = $this->parseHeaders();
@@ -333,12 +343,15 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
         $path = $this->SERVER['PATH_INFO'] ?? null;
         $query = $this->SERVER['QUERY_STRING'] ?? null;
 
+        // @todo Refactor with Uri
         if (!$path && isset($this->SERVER['REQUEST_URI'])) {
             $pathWithQuery = $this->SERVER['REQUEST_URI'];
             // strip the script name
             $scriptName = $this->SERVER['SCRIPT_NAME'] ?? "";
             if (substr($pathWithQuery, 0, strlen($scriptName)) == $scriptName) {
-                $pathWithQuery = substr($pathWithQuery, strlen($scriptName));
+                //$pathWithQuery = substr($pathWithQuery, strlen($scriptName));
+
+                // @TODO This is somewhat hackish. Determine request path and query string properly.
                 $pathParts = explode("?", $pathWithQuery);
                 if (count($pathParts) == 1) {
                     list($path) = $pathParts;
@@ -379,16 +392,17 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
         // - absolute-form = absolute-path [ "?" query ] (All proxy requests except CONNECT and OPTIONS)
         // - authority-form = authority (Authority = [host][:port], without user info) (All CONNECT requests)
         // - asteriks-form = "*" (All OPTIONS requests)
+        // @todo Proxy request targets
         switch ($method) {
             case "CONNECT":
-                $target = $uri->getAuthority();
+                $target = $uri->getAuthority(); // authority-form
                 break;
             case "OPTIONS":
-                $target = "*";
+                $target = "*"; // asteriks-form
                 break;
             default:
                 $pathWithQuery = join("?", [$path, $query]);
-                $target = $pathWithQuery;
+                $target = $pathWithQuery; // origin-form
                 break;
         }
 
@@ -405,16 +419,11 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
         $attributes = [];
 
         // body
-        //$body = new FileStream("php://input");
+        $input = "";
         if (in_array($method, ["POST", "PUT", "PATCH", "DELETE"])) {
             $input = file_get_contents("php://input");
-        } else {
-            $input = "";
         }
         $body = new StringStream($input);
-
-        // parsed body
-        // @TODO Parse request body
 
         // build request
         $request = new ServerRequest();
@@ -424,6 +433,17 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
         foreach ($attributes as $key => $value) {
             $request = $request->withAttribute($key, $value);
         }
+
+        // parsed body
+        $parsedBody = [];
+        if ($this->POST) {
+            $parsedBody = $this->POST;
+        } elseif (MessageInfo::isJson($request)) {
+            $parsedBody = json_decode($input, true);
+        } elseif (MessageInfo::isFormUrlencoded($request)) {
+            parse_str($input, $parsedBody);
+        }
+
         return $request
             ->withProtocolVersion($protocolVersion)
             ->withMethod($method)
@@ -433,7 +453,7 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
             //->withCookieParams($cookieParams)
             //->withUploadedFiles($uploadedFiles)
             ->withBody($body)
-            //->withParsedBody($parsed)
+            ->withParsedBody($parsedBody)
         ;
     }
 
@@ -459,124 +479,5 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
         //}
 
         return $headers;
-    }
-
-    /*** HELPER METHODS ***/
-
-    /**
-     * @return string
-     * @deprecated
-     */
-    public function getOriginalMethod()
-    {
-        return (isset($this->SERVER['SLIKK_HTTP_METHOD_OVERRIDE_ORIGINAL']))
-            ? $this->SERVER['SLIKK_HTTP_METHOD_OVERRIDE_ORIGINAL']
-            : $this->getMethod();
-    }
-
-    /**
-     * @return string
-     * @deprecated
-     */
-    public function getMethod()
-    {
-        return $this->SERVER['REQUEST_METHOD'] ?? "";
-    }
-
-    /**
-     * @return string
-     * @deprecated
-     */
-    public function getContentType()
-    {
-        return $this->SERVER['CONTENT_TYPE'] ?? "";
-    }
-
-    /**
-     * @return string
-     * @deprecated
-     */
-    public function getUserAgent()
-    {
-        return $this->SERVER['HTTP_USER_AGENT'] ?? "";
-    }
-
-    /**
-     * @return string
-     * @deprecated
-     */
-    public function getScheme()
-    {
-        return (isset($this->SERVER['HTTPS']) && $this->SERVER['HTTPS'] == 'on') ? 'https' : 'http';
-    }
-
-    /**
-     * @return string
-     * @deprecated
-     */
-    public function getHost()
-    {
-        return $this->SERVER['SERVER_NAME'] ?? "";
-    }
-
-    /**
-     * @return string
-     * @deprecated
-     */
-    public function getHostUrl()
-    {
-        return $this->getScheme() . '://' . $this->getHost();
-    }
-
-    /**
-     * @return string
-     * @deprecated
-     */
-    public function getPort()
-    {
-        return $this->SERVER['SERVER_PORT'] ?? "";
-    }
-
-    /**
-     * @return string
-     * @deprecated
-     */
-    public function getRemoteIp()
-    {
-        return $this->SERVER['REMOTE_ADDR'] ?? "";
-    }
-
-    /**
-     * @return string
-     * @deprecated
-     */
-    public function getReferer()
-    {
-        return $this->getReferrer();
-    }
-
-    /**
-     * @return string
-     * @deprecated
-     */
-    public function getReferrer()
-    {
-        //@todo
-        return (isset($this->SERVER['HTTP_REFERER'])) ? $this->SERVER['HTTP_REFERER'] : null;
-
-        //if (isset($this->SERVER['REDIRECT_URL'])) {
-        //    return substr($this->SERVER['REDIRECT_URL'], strlen($this->SERVER['SLIKK_APPURL']) - 1);
-        //}
-
-        //return null;
-    }
-
-    /**
-     * @return string
-     * @deprecated
-     */
-    public function getPath()
-    {
-        return $this->SERVER['PATH_INFO'] ?? "";
     }
 }
