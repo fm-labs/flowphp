@@ -1,208 +1,82 @@
 <?php
-namespace Flow\Core;
 
-use Flow\Http\Message\Request;
-use Flow\Http\Message\Response;
-use Flow\Router\LegacyRoute;
-use Flow\Router\Router;
+namespace Flow\App;
+
+use Flow\Http\Message\Stream\StringStream;
+use Flow\Http\StatusCode;
+use Flow\Router\Route;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * Class Dispatcher
- * @package Flow\Core
- * @deprecated Use MiddlewareQueue instead
+ * @package Flow\App
  */
-class Dispatcher {
-
+class Dispatcher
+{
     /**
-     * @var App
-     */
-    private $app;
-
-
-    /**
-     * @var Router
-     */
-    private $activeRouter;
-
-    /**
-     * @var LegacyRoute
-     */
-    private $activeRoute;
-
-    /**
-     * @param App $app
-     */
-    public function __construct(App $app)
-    {
-        $this->app = $app;
-    }
-
-    /**
-     * @param Router $router
-     * @return Response
+     * @param Route $route
+     * @param ServerRequestInterface $request
+     * @param ResponseInterface $response
+     * @return mixed|ResponseInterface
      * @throws \Exception
      */
-    public function dispatch(Router $router)
-    {
-        $this->activeRouter = $router;
-
-        // @todo Get only first match from router
-        foreach ($router->matches($this->app->request()) as $route) {
-
-            return $this->handleRoute($route);
-
-            //if ($result === null) {
-            //    continue;
-            //}
-        }
-
-        // No route matched
-        throw new \Exception('No route found for ' . $this->app->request()->getPath());
-    }
-
-
-    /**
-     * Each route has a route handler.
-     *
-     * Route handlers can be:
-     * a) A closure / callable method
-     * b) A router instance
-     *
-     * The route handler will be invoked with a reference to the App instance as first argument,
-     * and and the passed args from the route subsequentially.
-     *
-     * The result of the route handler can be:
-     * a) A response object
-     * b) Any object that implements the __toString interface
-     * c) A string
-     * d)
-     *
-     * @param LegacyRoute $route
-     * @return Response
-     * @throws \Exception
-     */
-    private function handleRoute(LegacyRoute $route)
-    {
-
-
-        //@todo Use Event system
-        //@todo Use reflection on the handler and check if it requires App instance as first argument or not
-        //@todo Encapsulate handler invocation in closure / dispatcher
-        //@todo Implement output buffered responses
-        //@todo Router should handle nested routers itself. Return the final route!
-
-        $handler = $route->getHandler();
-        $request = $this->app->request();
-        $response = $this->app->response();
-
-        // If the handler is a route, dispatch that router
-        if ($handler instanceof Router) {
-            return $this->dispatch($handler);
-        }
-
-        // Check if handler is callable
-        if (!is_callable($handler)) {
-            throw new \Exception('Route handler is not callable');
-        }
-
-        // Working with this route now
-        $this->activeRoute = $route;
-
-
-        // Inject route params into request object
-        $request->params = $route->getParams();
-
-        // Trigger events 'before'
-        $before = $route->trigger('before');
-        if ($before instanceof Response) {
-            return $before;
-        }
-
-        $before = $this->app->applyHook('route.before', $route);
-        if ($before instanceof Response) {
-            return $before;
-        }
-
-        // Extract passed args from route
-        // and inject App instance as first argument
-        $args = $route->getPassVars();
-        array_unshift($args, $this->app);
-
-
-        $useBuffered = false;
+    public static function executeHandler(
+        App $app,
+        ServerRequestInterface $request,
+        ResponseInterface $response,
+        callable $handler,
+        array $args = []
+    ) {
+        //@todo Output buffering
+        ob_start();
+        $buffer = null;
         try {
-
-            // Invoke route handler with output buffering enabled
-            ob_start();
-
+            // bind the app instance as $this in route handlers
+            // and execute
+            if ($handler instanceof \Closure) {
+                $handler = \Closure::bind($handler, $app);
+            }
             $result = call_user_func_array($handler, $args);
-            switch (true) {
-                case $result instanceof Response:
-                    $response = $result;
-                    break;
-                case is_object($result) && method_exists($result, '__toString'):
-                    // objects that include a __toString method are casted to string as body
-                    $response->setBody((string) $result);
-                    break;
-                case is_object($result) && method_exists($result, '__invoke'):
-                case is_callable($result):
-                    // callable/invokeable results get invoked and MUST return a Response object
-                    $callableResultDispatcher = function() use ($result) {
-                        return call_user_func($result);
-                    };
-                    $_result = $callableResultDispatcher();
-                    if ($_result instanceof Response) {
-                        $response = $_result;
-                    } else {
-                        throw new \BadFunctionCallException('Callable dispacher result is not instance of Response');
-                    }
-                case is_string($result):
-                    // strings are set as response body
-                    $response->setBody($result);
-                    break;
-                case is_bool($result) && ($result === true):
-                    // boolean TRUE enables buffered result
-                    $useBuffered = true;
-                    break;
-                case is_null($result):
-                    // do nothing
-                    break;
-                default:
-                    throw new \Exception('Route handler result malformed');
-            }
+            //debug($result);
 
+            // result handling
+            if ($result instanceof ResponseInterface) {
+                // RESPONSE results: Return
+                $response = $result;
+            } elseif ($result instanceof RequestHandlerInterface) {
+                // REQUEST-HANDLER results: Pass the request to the nested handler recursively
+                if ($result instanceof App) {
+                    // For nested Apps we have to update the router prefix.
+                    // The path of the current request is set as the root path of the nested App.
+                    $result->router->setPrefix($request->getUri()->getPath());
+                }
+                $response = $result->handle($request);
+            } elseif (is_callable($result)) {
+                // CALLABLE-HANDLER results: Execute the dispatcher recursively
+                $response = self::executeHandler($app, $request, $response, $result, $args);
+            } elseif (is_string($result) || (is_object($result) && method_exists($result, '__toString'))) {
+                // STRING results or objects that can be converted to string: Apply result as body contents
+                $response = $response->withBody(new StringStream((string)$result));
+            } elseif (is_null($result)) {
+                // NULL results: Send an empty response with 'No content' header
+                // @TODO Fallback response handler for NULL results
+                $response = $response
+                    ->withStatus(StatusCode::NO_CONTENT)
+                    ->withBody(new StringStream(""));
+            } else {
+                // INVALID results: Throw exception
+                throw new \RuntimeException("Router: Malformed handler result");
+            }
             $buffer = ob_get_clean();
-
-            if ($this->app->debug === true) {
-                // prepend buffered content in debug mode
-                $response->setBody($buffer . $response->getBody());
-
-            } elseif ($useBuffered) {
-                // set output buffer as response content, if flag is set
-                $response->setBody($useBuffered);
-            }
-
         } catch (\Exception $ex) {
             $buffer = ob_get_clean();
-
-            //@TODO Logging
             throw $ex;
-        }
-
-
-        // after
-        $after = $route->trigger('after', $response);
-        if ($after instanceof Response) {
-            return $after;
-        }
-
-        $after = $this->app->applyHook('route.after', $route, $response);
-        if ($after instanceof Response) {
-            return $after;
+        } finally {
+            //debug($buffer);
         }
 
         return $response;
     }
-
-
-} 
+}

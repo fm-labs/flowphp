@@ -1,10 +1,4 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: flow
- * Date: 10/30/14
- * Time: 10:53 PM
- */
 
 namespace Flow\Test\App;
 
@@ -103,10 +97,10 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
             $middlewareTest[] = 'route';
         });
 
-        $app->before(function (App $app) use (&$middlewareTest) {
+        $app->before(function () use (&$middlewareTest) {
             $middlewareTest[] = 'before';
         });
-        $app->after(function (App $app) use (&$middlewareTest) {
+        $app->after(function () use (&$middlewareTest) {
             $middlewareTest[] = 'after';
         });
         $app();
@@ -126,11 +120,11 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
             return (new Response())->withBody(new StringStream('Foo'));
         });
 
-        $app->before(function (App $app) use (&$middlewareTest) {
+        $app->before(function () use (&$middlewareTest) {
             $middlewareTest[] = 'before';
             return (new Response())->withBody(new StringStream('Bar'));
         });
-        $app->after(function (App $app) use (&$middlewareTest) {
+        $app->after(function () use (&$middlewareTest) {
             $middlewareTest[] = 'after';
         });
         $app();
@@ -156,10 +150,10 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
                 $middlewareTest[] = 'afterRoute';
             });
 
-        $app->before(function (App $app) use (&$middlewareTest) {
+        $app->before(function () use (&$middlewareTest) {
             $middlewareTest[] = 'before';
         });
-        $app->after(function (App $app) use (&$middlewareTest) {
+        $app->after(function () use (&$middlewareTest) {
             $middlewareTest[] = 'after';
         });
         $app();

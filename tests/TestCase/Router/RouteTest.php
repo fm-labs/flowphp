@@ -109,7 +109,7 @@ class RouteTest extends \PHPUnit\Framework\TestCase
         $this->assertFalse($r->match($req));
         $req = $this->mockRequest("GET", "/foo/bar/more");
         $this->assertTrue($r->match($req));
-        $this->assertEquals(['_wildcard' => ['bar']], $r->getParams());
+        $this->assertEquals([0 => 'bar'], $r->getParams());
     }
 
     /**
@@ -124,18 +124,16 @@ class RouteTest extends \PHPUnit\Framework\TestCase
 
         $req = $this->mockRequest("GET", "/foo/bar");
         $this->assertTrue($r->match($req));
-        $this->assertEquals(['_wildcard' => ['bar']], $r->getParams());
+        $this->assertEquals([0 => 'bar'], $r->getParams());
 
         $req = $this->mockRequest("GET", "/foo/bar/has/another/subpath");
         $this->assertTrue($r->match($req));
-        $this->assertEquals(['_wildcard' => ['bar/has/another/subpath']], $r->getParams());
+        $this->assertEquals([0 => 'bar/has/another/subpath'], $r->getParams());
 
         $r = new Route('/foo/**/bar');
         $req = $this->mockRequest("GET", "/foo/has/another/subpath/at/bar");
         $this->assertTrue($r->match($req));
-        $this->assertEquals(['_wildcard' => ['has/another/subpath/at']], $r->getParams());
-
-
+        $this->assertEquals([0 => 'has/another/subpath/at'], $r->getParams());
     }
 
     public function testMatchWithNamedGreedyWildcardParams()
@@ -170,7 +168,7 @@ class RouteTest extends \PHPUnit\Framework\TestCase
 
         $req = $this->mockRequest("GET", "/test-me/index/123/c");
         $this->assertTrue($r->match($req));
-        $this->assertEquals(['controller' => 'test-me', 'action' => "index", 0 => 123, '_wildcard' => ["c"]], $r->getParams());
+        $this->assertEquals(['controller' => 'test-me', 'action' => "index", 0 => 123, 1 => "c"], $r->getParams());
     }
 
 
@@ -184,5 +182,4 @@ class RouteTest extends \PHPUnit\Framework\TestCase
         $this->assertTrue($r->match($this->mockRequest("GET", "/mytest/foo/mycontroller/myaction")));
         $this->assertEquals(['controller' => 'mycontroller', 'action' => 'myaction'], $r->getParams());
     }
-
 }

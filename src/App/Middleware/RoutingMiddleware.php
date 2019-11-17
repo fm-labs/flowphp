@@ -2,6 +2,7 @@
 namespace Flow\App\Middleware;
 
 use Flow\App\App;
+use Flow\App\Dispatcher;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\RequestHandlerInterface;
@@ -52,6 +53,7 @@ class RoutingMiddleware extends Middleware
             break;
         }
         */
+        //print_routes($this->app->router->getRoutes());
 
         $route = $router->match($request);
         if ($route) {
@@ -61,8 +63,9 @@ class RoutingMiddleware extends Middleware
             }
         }
 
-        print_routes($router->getRoutes());
-        throw new \Exception(sprintf("No route match for '%s'", $request->getUri()));
+        // @Todo remove debug statements
+        //print_routes($router->getRoutes());
+        //throw new \Exception(sprintf("No route match for '%s'", $request->getUri()));
 
         return $handler->handle($request);
     }
@@ -96,12 +99,12 @@ class RoutingMiddleware extends Middleware
 
         // Inject route params as request attributes
         foreach ($route->getParams() as $k => $v) {
-            $request->withAttribute($k, $v);
+            $request = $request->withAttribute($k, $v);
         }
 
         // 'before' events
-        $before = $this->app->trigger('route.before', $route);
-        if ($before instanceof Response) {
+        $before = $this->app->trigger('route.before', ['route' => $route]);
+        if ($before instanceof ResponseInterface) {
             return $before;
         }
 
@@ -117,75 +120,17 @@ class RoutingMiddleware extends Middleware
             throw new \Exception('Route handler is not callable');
         }
         $handlerArgs = $route->getPassVars();
-        $response = $this->executeHandler($request, $response, $handler, $handlerArgs);
+        $response = Dispatcher::executeHandler($this->app, $request, $response, $handler, $handlerArgs);
 
         // 'after' events
-        $after = $route->trigger('after', $response);
+        $after = $route->trigger('after', ['request' => $request, 'response' => $response]);
         if ($after instanceof ResponseInterface) {
             return $after;
         }
 
-        $after = $this->app->trigger('route.after', $route, $response);
-        if ($after instanceof Response) {
+        $after = $this->app->trigger('route.after', ['route' => $route, 'request' => $request, 'response' => $response]);
+        if ($after instanceof ResponseInterface) {
             return $after;
-        }
-
-        return $response;
-    }
-
-    /**
-     * @param Route $route
-     * @param ServerRequestInterface $request
-     * @param ResponseInterface $response
-     * @return mixed|ResponseInterface
-     * @throws \Exception
-     */
-    private function executeHandler(ServerRequestInterface $request, ResponseInterface $response, callable $handler, array $args = [])
-    {
-        //@todo Output buffering
-        //@todo Handle nested handlers, routers, apps and plugins
-        //@TODO Error Logging
-
-        //$useBuffered = false;
-        //ob_start();
-        try {
-            // If the handler is a route, dispatch that router
-            //if ($handler instanceof Router) {
-            //    #$this->router = $handler;
-            //    #return $this->process($request);
-            //    #return $handler;
-            //}
-
-            // bind the app instance as $this in route handlers
-            if ($handler instanceof \Closure) {
-                $handler = \Closure::bind($handler, $this->app);
-            }
-            $result = call_user_func_array($handler, $args);
-            //debug($result);
-
-            // RESPONSE results
-            if ($result instanceof ResponseInterface) {
-                return $result;
-            // STRING results or objects that can be converted to string
-            } elseif (is_string($result) || (is_object($result) && method_exists($result, '__toString'))) {
-                $response = $response->withBody(new StringStream((string)$result));
-            // NULL results
-            } elseif (is_null($result)) {
-                $response = $response->withBody(new StringStream(""));
-            // CALLABLE results (nested handlers)
-            } elseif (is_callable($result)) {
-                //@todo also pass route args recursively?
-                $response = $this->executeHandler($request, $response, $result/*, $args*/);
-            // INVALID results
-            } else {
-                throw new \RuntimeException("Router: Malformed handler result");
-            }
-
-        } catch (\Exception $ex) {
-            throw $ex;
-        } finally {
-            //$buffer = ob_get_flush();
-            //$buffer = ob_get_clean();
         }
 
         return $response;

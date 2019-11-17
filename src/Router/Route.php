@@ -83,7 +83,7 @@ class Route
     public function __construct($route, $options = null, $handler = null)
     {
         $prefix = $name = null;
-        $defaults = $patterns = $pass = [];
+        $defaults = $patterns = $pass = $methods = [];
 
         if (is_null($handler) && is_callable($options)) {
             $handler = $options;
@@ -101,13 +101,15 @@ class Route
         $this->paramPatterns = $patterns;
         $this->pass = $pass;
         //$this->prefix = trim((string) $prefix, '/');
+        $this->setMethods($methods);
         $this->setPrefix($prefix);
+        $this->compile();
     }
 
     public function setPrefix($prefix)
     {
         $this->prefix = trim((string) $prefix, '/');
-        $this->compile();
+        $this->compiled = null;
 
         return $this;
     }
@@ -125,6 +127,17 @@ class Route
     public function getName()
     {
         return $this->name;
+    }
+
+    protected function setMethods($methods)
+    {
+        if (is_string($methods)) {
+            $methods = explode("|", $methods);
+        }
+
+        $this->methods = $methods;
+
+        return $this;
     }
 
     /**
@@ -147,6 +160,7 @@ class Route
         }
 
         $this->handler = $handler;
+
         return $this;
     }
 
@@ -162,6 +176,9 @@ class Route
 
     public function getCompiled()
     {
+        if ($this->compiled === null) {
+            $this->compile();
+        }
         return $this->compiled;
     }
 
@@ -208,15 +225,15 @@ class Route
 
         // find named params
         $compiled = preg_replace_callback_array([
-            '@{\?([\w\-]+)}@' => function ($matches) use (&$info) {
+            '@{\?([\w]+)}@' => function ($matches) use (&$info) {
                 //debug("found optional param: " . $matches[1]);
-                $pattern = $this->paramPatterns[$matches[1]] ?? '[\w\-]+';
+                $pattern = $this->paramPatterns[$matches[1]] ?? '[\w\-\_]+';
                 $info[] = ['name' => $matches[1], 'optional' => true];
-                return '(' . $pattern . ')?';
+                return '?(' . $pattern . ')?';
             },
-            '@{([\w\-]+)}@' => function ($matches) use (&$info) {
+            '@{([\w]+)}@' => function ($matches) use (&$info) {
                 //debug("found required param: " . $matches[1]);
-                $pattern = $this->paramPatterns[$matches[1]] ?? '[\w\-]+';
+                $pattern = $this->paramPatterns[$matches[1]] ?? '[\w\-\_]+';
                 $info[] = ['name' => $matches[1], 'optional' => false];
                 return '(' . $pattern . ')';
             },
@@ -228,7 +245,7 @@ class Route
             '@/(\*)@' =>  function ($matches) use (&$info) {
                 //debug("found non-greedy wildcard");
                 $info[] = ['name' => null, 'wildcard' => true, 'greedy' => false];
-                return '/([\w\-]+)';
+                return '/([\w\-\_]+)';
             },
         ], $route);
 
@@ -248,9 +265,16 @@ class Route
      */
     public function match(RequestInterface $request)
     {
+        if ($this->compiled === null) {
+            $this->compile();
+            //throw new \RuntimeException("Route MUST be compiled first");
+        }
+
         $this->params = [];
 
         if (
+            // @todo match host
+            // @todo match port
             $this->matchMethod($request->getMethod())
             && $this->matchPath($request->getUri()->getPath())
         ) {
@@ -276,10 +300,6 @@ class Route
      */
     protected function matchPath($path)
     {
-        if ($this->compiled === null) {
-            throw new \RuntimeException("Route MUST be compiled first");
-        }
-
         $path = $this->normalizePath($path);
         // match prefix
         /*
@@ -295,23 +315,22 @@ class Route
         // normalize given path
         //debug("$path -> " . $this->compiled . "\n");
 
-
         // match
         if (!preg_match('@^' . $this->compiled . '$@i', $path, $matches)) {
-            debug(sprintf("path:%s did not match route:%s:%s  [ %s ]", $path, $this->prefix, $this->route, $this->compiled));
+            //debug(sprintf("path:%s did not match route:%s:%s  [ %s ]", $path, $this->prefix, $this->route, $this->compiled));
             return false;
         }
 
         // parse params
         $this->params = [];
 
-        debug(sprintf("path:%s MATCHED route:%s:%s  [ %s ]", $path, $this->prefix, $this->route, $this->compiled));
+        //debug(sprintf("path:%s MATCHED route:%s:%s  [ %s ]", $path, $this->prefix, $this->route, $this->compiled));
         //debug($matches);
         //debug($this->info);
 
-        if (count($matches) - 1 != count($this->info)) {
-            debug("MISSMATCH!");
-        }
+        //if (count($matches) - 1 != count($this->info)) {
+        //    debug("MISSMATCH!");
+        //}
 
         array_shift($matches);
         for ($i = 0; $i < count($matches); $i++) {
@@ -319,7 +338,7 @@ class Route
             $_name = $_info['name'] ?? null;
             $_val = $matches[$i];
             if ($_info['wildcard'] ?? null) {
-                $this->params['_wildcard'][] = $_val;
+                $this->params[] = $_val;
                 continue;
             }
 
@@ -340,54 +359,10 @@ class Route
      * @param array $params Route params
      * @return bool|string
      */
-    public function generate($params = array())
+    public function generate($params = [])
     {
-        $this->describe();
-
-        $url = $this->route;
-        $url = rtrim($url, '/');
-
-        // strip off wildcard
-        $wildcard = false;
-        if (substr($url, -2) == "**") {
-            $url = substr($url, 0, -2);
-            $wildcard = 'greedy';
-        } elseif (substr($url, -1) == "*") {
-            $url = substr($url, 0, -1);
-            $wildcard = 'non-greedy';
-        }
-        foreach ($params as $key => $val) {
-            $pattern = '/\{' . $key . '\}/i';
-            if (!empty($val) && preg_match($pattern, $url)) {
-                $url = preg_replace($pattern, $val, $url);
-                unset($params[$key]);
-            }
-        }
-
-        // unresolved named params
-        if (preg_match('/\{(.*)\}/i', $url)) {
-            return false;
-
-        // append remaining wildcard params
-        } elseif (!empty($params) && $wildcard != false) {
-            $url .= join('/', $params);
-
-        // no remaining params but wildcard enabled
-        } elseif (empty($params) && $wildcard != false) {
-            return false;
-
-        // unmatched params
-        } elseif (!empty($params)) {
-            return false;
-        }
-
-
-        $url = rtrim($url, '/');
-        $url .= '/';
-
-        //debug("Generated URL for route: $_url -> $url\n");
-
-        return $url;
+        // @TODO Implement Router::generate() method
+        throw new \Exception("Route: Not implemented: " . __FUNCTION__);
     }
 
     /**
@@ -437,18 +412,14 @@ class Route
         return $this;
     }
 
-    public function trigger($name)
+    public function trigger($name, array $data = [])
     {
         if (!isset($this->callbacks[$name])) {
             throw new \Exception('Unknown callback ' . $name);
         }
 
-        $args = func_get_args();
-        array_shift($args);
-        array_unshift($args, $this);
-
         foreach ($this->callbacks[$name] as $callable) {
-            $result = call_user_func_array($callable, $args);
+            $result = call_user_func($callable, $this, $data);
             if ($result !== null) {
                 return $result;
             }

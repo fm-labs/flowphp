@@ -3,10 +3,7 @@
 namespace Flow\Router;
 
 use Psr\Http\Message\RequestInterface;
-use Flow\Http\Message\Request;
-use Flow\Http\Message\Response;
-use Flow\Router\Route;
-use \Exception;
+use Exception;
 
 /**
  * Class Router
@@ -29,7 +26,7 @@ class Router
 
     public function __construct($prefix = '')
     {
-        $this->routes = array();
+        $this->routes = [];
         $this->setPrefix($prefix);
     }
 
@@ -63,7 +60,7 @@ class Router
     {
         if ($handler === null && is_callable($options)) {
             $handler = $options;
-            $options = array();
+            $options = [];
         }
 
         if (is_string($route)) {
@@ -76,6 +73,7 @@ class Router
 
         $hash = spl_object_hash($route);
         $this->routes[$hash] = $route;
+
         return $this->routes[$hash];
     }
 
@@ -109,11 +107,11 @@ class Router
      *
      * @param RequestInterface $request
      * @return array
-     * @deprecated
+     * @deprecated Use match() instead
      */
     public function matches(RequestInterface $request)
     {
-        $matches = array();
+        $matches = [];
         foreach ($this->routes as $route) {
             if ($route->match($request)) {
                 //print_r("Route found for " . $request->getPath() . " -> " . $route->getRoute() . "\n");
@@ -127,5 +125,4 @@ class Router
         }
         return $matches;
     }
-
 }
