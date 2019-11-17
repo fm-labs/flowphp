@@ -3,6 +3,8 @@
 namespace Flow;
 
 use Flow\Http\Environment;
+use Flow\Http\Exception\ServerException;
+use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * Class Flow
@@ -20,6 +22,7 @@ class Flow
     /**
      * Boot method
      * - Loads global functions
+     * @deprecated
      */
     public static function boot()
     {
@@ -63,15 +66,17 @@ class Flow
      * @param \Flow\App\App|callable $app If a callable is used,
      *    the callable MUST return an instance of `RequestHandlerInterface`
      */
-    public static function serve(\Flow\App\App $app)
+    public static function serve($app)
     {
         try {
             $handler = $app();
+            if (!$handler instanceof RequestHandlerInterface) {
+                throw new ServerException("Misconfigured server");
+            }
             $env = Environment::fromGlobals();
             $server = (new \Flow\Http\Server\Server())
                 ->setEnvironment($env)
                 ->run($handler);
-            //static::get('server', 'http_server')->run($app);
         } catch (\Exception $ex) {
             // @todo Error logging
             die("[CRITICAL] Unhandled Server Error: " . $ex->getMessage());

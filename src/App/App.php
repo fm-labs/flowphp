@@ -2,9 +2,9 @@
 
 namespace Flow\App;
 
+use Flow\Http\Message\Request;
 use Flow\Object\ConfigInterface;
 use Flow\Template\Template;
-use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -36,16 +36,16 @@ use Flow\_View\View;
  *
  * @property Configuration $config
  * @property MiddlewareQueue $middlewares
- * @property RequestInterface $request
+ * @property ServerRequestInterface $request
  * @property ResponseInterface $response
  * @property Router $router
  */
 class App extends Container implements RequestHandlerInterface, ResponseFactoryInterface, ResponseEmitterInterface
 {
-    use SingletonTrait;
+    //use SingletonTrait;
     use ResponseEmitterTrait;
 
-    private static $singletonProtectGet = true; //@see SingletonTrait
+    //private static $singletonProtectGet = true; //@see SingletonTrait
     //static private $singletonProtectSet = true; //@see SingletonTrait
 
     protected $defaultConfig = [
@@ -80,11 +80,13 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
      */
     public function __construct(array $config = [])
     {
-        static::setInstance($this);
+        //static::setInstance($this);
 
         $this->config = new Configuration($config);
         $this->router = new Router();
         $this->middlewares = new MiddlewareQueue();
+        $this->request = new Request();
+        $this->response = new Response();
 
         $this->setup();
     }
@@ -216,10 +218,12 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
     {
         if ($plugin !== null) {
             if (!is_callable($plugin)) {
-                throw new \InvalidArgumentException("App: Plugin MUST be callable");
+                $plugin = function () use ($pluginName) {
+                    throw new \InvalidArgumentException(sprintf("App: Uncallable plugin '%s'", $pluginName));
+                };
             }
 
-            return $this->plugins[$pluginName] = $plugin($this);
+            return $this->plugins[$pluginName] = call_user_func($plugin, $this);
         }
 
         // @TODO Throw new MissingPluginException
@@ -239,7 +243,7 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
         $this->request = $request;
-        $this->response = new Response();
+        $this->response = ($this->response) ?: new Response();
 
         // @TODO Map ServerRequest to AppRequest
 
@@ -253,7 +257,6 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
         if ($before instanceof ResponseInterface) {
             return $this->response = $before;
         }
-
 
         $result = $this->middlewares->handle($request);
         if ($result instanceof ResponseInterface) {
@@ -413,20 +416,16 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
 
     public function text(string $str)
     {
-        $response = $this->response
+        return $this->response
             ->withHeader('Content-Type', 'text/plain')
             ->withBody(new StringStream($str));
-
-        $this->send($response);
     }
 
     public function html(string $html)
     {
-        $response = $this->response
+        return $this->response
             ->withHeader('Content-Type', 'text/html')
             ->withBody(new StringStream($html));
-
-        $this->send($response);
     }
 
     /**
@@ -445,28 +444,29 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
                 $data = ['content' => $data];
             }
         } elseif (!is_array($data)) {
-            throw new \InvalidArgumentException("Can not send JSON response: Malformed data");
+            throw new \InvalidArgumentException("Invalid data: Can not convert to JSON");
         }
 
         if ($encode) {
             $data = json_encode($data, JSON_PRETTY_PRINT); // @todo disable pretty printing
         }
 
-        $response = $this->response
+        return $this->response
             ->withoutHeader('Content-Type')
             ->withHeader('Content-Type', 'application/json')
             ->withBody(new StringStream($data));
-
-        $this->send($response);
     }
 
+    /**
+     * @param string $xmlStr
+     * @return ResponseInterface
+     * @todo Add XML document support
+     */
     public function xml(string $xmlStr)
     {
-        $response = $this->response
+        return $this->response
             ->withHeader('Content-Type', 'application/xml')
             ->withBody(new StringStream($xmlStr));
-
-        $this->send($response);
     }
 
     /**
@@ -582,14 +582,17 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
      * @return mixed
      * @todo Refactor with event manager
      */
-    public function trigger($event)
+    public function trigger($event, array $data = [], $subject = null)
     {
-        $args = func_get_args(); // use all other args as callback function args
-        array_shift($args); // remove the event name
-        array_unshift($args, $this); // add $this as first callback function arg
+        //$args = func_get_args(); // use all other args as callback function args
+        //array_shift($args); // remove the event name
+        //array_unshift($args, $this); // add $this as first callback function arg
+        if ($subject === null) {
+            $subject =& $this;
+        }
 
         foreach ($this->events[$event] as $callable) {
-            $result = call_user_func_array($callable, $args);
+            $result = call_user_func($callable, $event, $subject, $data);
             if ($result !== null) {
                 return $result;
             }
