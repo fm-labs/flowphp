@@ -21,7 +21,7 @@ class ErrorMiddleware extends Middleware
     {
         try {
             return $handler->handle($request);
-        } catch (\Exception $ex) {
+        } catch (\Exception | \Error $ex) {
             /*
             $errorMessage = sprintf(
                 "Error [%s]: [File %s:%s] %s",

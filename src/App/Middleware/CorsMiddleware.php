@@ -1,8 +1,6 @@
 <?php
 
-
 namespace Flow\App\Middleware;
-
 
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;

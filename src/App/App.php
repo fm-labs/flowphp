@@ -97,6 +97,13 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
         $this->middleware(new ErrorMiddleware($this));
         $this->middleware(new RequestMapperMiddleware($this));
         $this->middleware(new CorsMiddleware($this));
+
+        $this->factory('template', function () {
+            $template = (new Template($this->config('template') ?? []));
+            $this->trigger('template.create', [], $template);
+            
+            return $template;
+        });
     }
 
     /**
@@ -193,14 +200,10 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
     //*****************************************************************
     public function config($key = null, $value = null)
     {
-        return $this->config->config($key, $value);
-    }
-
-    public function template()
-    {
-        $config = $this->config('template') ?? [];
-        $template = new Template($config);
-        return $template;
+        if ($key !== null && is_string($key) && $value !== null) {
+            $key = [$key => $value];
+        }
+        return $this->config->config($key);
     }
 
     /**
@@ -258,6 +261,7 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
             return $this->response = $before;
         }
 
+        reset($this->middlewares->queue);
         $result = $this->middlewares->handle($request);
         if ($result instanceof ResponseInterface) {
             $this->response = $result;
@@ -623,12 +627,18 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
     //*** VIEW ***
     //*****************************************************************
 
+    public function view()
+    {
+        $template = $this->template();
+        return new TemplateView($template);
+    }
+
     /**
      * @param null $viewClass
      * @throws \InvalidArgumentException
      * @return View
      */
-    public function view($viewClass = null)
+    public function oldview($viewClass = null)
     {
         if ($viewClass) {
             if ($viewClass instanceof View) {

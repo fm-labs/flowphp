@@ -1,4 +1,5 @@
 <?php
+
 namespace Flow\App;
 
 use Psr\Http\Message\ResponseInterface;
@@ -14,7 +15,7 @@ abstract class Middleware implements MiddlewareInterface
     protected $app;
 
     /**
-     * RoutingMiddleware constructor.
+     * Middleware constructor.
      *
      * @param App $app
      */
@@ -30,5 +31,8 @@ abstract class Middleware implements MiddlewareInterface
      * If unable to produce the response itself, it may delegate to the provided
      * request handler to do so.
      */
-    abstract public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface;
+    abstract public function process(
+        ServerRequestInterface $request,
+        RequestHandlerInterface $handler
+    ): ResponseInterface;
 }

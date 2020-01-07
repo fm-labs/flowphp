@@ -1,0 +1,11 @@
+[
+    "PHPPM\\Bootstraps\\Symfony",
+    "dev",
+    true,
+    "\/home\/flow\/workspaces\/php\/flowphp",
+    {
+        "app": "flowphp-examples",
+        "appPath": "..\/flowphp-examples\/src\/examples\/hello_world\/app.php"
+    },
+    "..\/flowphp-examples\/src\/examples\/hello_world\/app.php"
+]

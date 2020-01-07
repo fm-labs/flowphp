@@ -3,10 +3,11 @@
 namespace Flow\Template;
 
 use Flow\Http\Message\Uri;
+use Flow\Object\ConfigInterface;
 use Flow\Object\ConfigTrait;
 use Flow\Object\StaticFactoryTrait;
 
-class Template
+class Template implements ConfigInterface
 {
     use ConfigTrait;
     use StaticFactoryTrait;
@@ -37,10 +38,16 @@ class Template
      */
     protected $helpers = [];
 
+    /**
+     * @var string Render result
+     */
+    protected $rendered;
+
     public function __construct(array $config = [])
     {
         $this->config($config);
 
+        // Built-in helpers
         $this->addHelper('css', function ($uri = null, $options = []) {
             $uri = $this->getAssetUri($uri);
             return sprintf('<link rel="stylesheet" href="%s">', $uri);
@@ -56,13 +63,29 @@ class Template
         $this->addHelper('textBold', function ($str = "") {
             return sprintf('<span style="font-weight: bold;">%s</span>', $str);
         });
+        $this->addHelper('element', function ($template = null, $data = []) {
+            return (new Template($this->config))
+                ->setTemplate('elements/' . $template)
+                ->setLayout(false)
+                ->set($this->vars)
+                ->set($data);
+        });
+        $this->addHelper('nav', function () {
+            $sections = $this->get('sections', []);
+            $nav = [];
+            $html = "";
+            foreach ($sections as $sectionId => $section) {
+                $html .= sprintf('<a class="p-2 text-dark" href="#%s">%s</a>', $sectionId, $section['title']);
+            }
+            return $html;
+        });
     }
 
-    public function __call($helper, $args = [])
+    public function __call($helperName, $args = [])
     {
-        $helper = $this->helpers[$helper] ?? null;
+        $helper = $this->helpers[$helperName] ?? null;
         if (!$helper) {
-            throw new \RuntimeException("Template helper not loaded: $helper");
+            throw new \RuntimeException("Template helper not loaded: $helperName");
         }
 
         return call_user_func_array($helper, $args);
@@ -147,36 +170,43 @@ class Template
 
     public function render()
     {
-        if (!$this->template) {
-            return 'No template selected';
+        if ($this->rendered === null) {
+            if (!$this->template) {
+                return 'No template selected';
+            }
+
+            //$templatePath = preg_replace('@\/@', DIRECTORY_SEPARATOR, $this->template);
+            $templatePath = $this->getTemplatePath($this->template);
+            if (!file_exists($templatePath)) {
+                return "Template not found: $templatePath";
+            }
+
+            $renderer = function ($templatePath) {
+                extract($this->vars);
+                ob_start();
+                include($templatePath);
+                $buffer = ob_get_clean();
+                return $buffer;
+            };
+            $renderer = \Closure::bind($renderer, $this, get_class($this));
+
+            $content = $renderer($templatePath);
+            if ($this->layout) {
+                $this->set('content', $content);
+                $content = $this->renderLayout();
+            }
+            $this->rendered = $content;
         }
 
-        //$templatePath = preg_replace('@\/@', DIRECTORY_SEPARATOR, $this->template);
-        $templatePath = $this->getTemplatePath($this->template);
-        if (!file_exists($templatePath)) {
-            return "Template not found: $templatePath";
-        }
-
-        $renderer = function ($templatePath) {
-            extract($this->vars);
-            ob_start();
-            include($templatePath);
-            $buffer = ob_get_clean();
-            return $buffer;
-        };
-
-        $content = $renderer($templatePath);
-
-        if ($this->layout) {
-            $this->set('content', $content);
-            $content = $this->renderLayout();
-        }
-
-        return $content;
+        return $this->rendered;
     }
 
     public function __toString()
     {
-        return (string) $this->render();
+        try {
+            return (string) $this->render();
+        } catch (\Exception $ex) {
+            return "Template rendering failed: " . $ex->getMessage() . "[" . $ex->getFile() . ":" . $ex->getLine() . "]";
+        }
     }
 }

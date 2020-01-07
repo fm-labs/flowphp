@@ -1,4 +1,5 @@
 <?php
+
 namespace Flow\Http\Server;
 
 use Psr\Http\Message\ResponseInterface;
@@ -6,8 +7,6 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Flow\Http\Exception\HttpException;
-use Flow\Http\Exception\NotFoundException;
-use Flow\Http\Exception\ServerException;
 
 class MiddlewareQueue implements RequestHandlerInterface
 {
@@ -34,6 +33,7 @@ class MiddlewareQueue implements RequestHandlerInterface
         }
 
         array_push($this->queue, $middleware);
+        reset($this->queue);
     }
 
     /**
@@ -44,14 +44,17 @@ class MiddlewareQueue implements RequestHandlerInterface
      */
     public function handle(ServerRequestInterface $request): ResponseInterface
     {
-        if (empty($this->queue)) {
-            //throw new NotFoundException();
+        /** @var MiddlewareInterface $middleware */
+        $middleware = current($this->queue);
+
+        if (empty($this->queue) || $middleware === false) {
             throw HttpException::notFound(sprintf("No handler found for '%s'", $request->getUri()));
         }
 
-        /** @var MiddlewareInterface $middleware */
-        $middleware = array_shift($this->queue);
+        //$middleware = current($this->queue);
+        //$middleware = array_shift($this->queue);
         //debug("invoke middleware: " . get_class($middleware));
+        next($this->queue);
         return $middleware->process($request, $this);
     }
 
