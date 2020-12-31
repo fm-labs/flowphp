@@ -23,6 +23,7 @@ use Flow\Router\Router;
 use Flow\Router\Route;
 use Flow\Flow;
 use Flow\_View\View;
+use FmLabs\Uri\UriFactory;
 use Psr\Http\Message\ResponseFactoryInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
@@ -672,18 +673,26 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
     /**
      * Build new URI
      *
-     * @param array|UriInterface $urir
+     * @param array|string|UriInterface $uri
      * @return UriInterface
-     * @todo Refactor with UriBuilder
+     * @deprecated
      */
     public function uri($uri)
     {
         // base uri is the uri of current request, without query and fragment
-        $base = new Uri($this->request->getUri()
+        $base = $this->request->getUri()
             ->withQuery("")
-            ->withFragment(""));
+            ->withFragment("");
 
-        $uri = (new Uri($uri))
+        if (is_array($uri)) {
+            $uri = UriFactory::fromComponents($uri);
+        } elseif (is_string($uri)) {
+            $uri = UriFactory::fromString($uri);
+        } else {
+            $uri = UriFactory::fromUri($uri);
+        }
+
+        $uri
             ->withScheme($base->getScheme())
             ->withHost($base->getHost())
             ->withPort($base->getPort())

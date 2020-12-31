@@ -4,6 +4,7 @@ namespace Flow\Test\Http\Message;
 
 use Flow\Http\Message\Request;
 use Flow\Http\Message\Uri;
+use FmLabs\Uri\UriFactory;
 
 class RequestTest extends \PHPUnit\Framework\TestCase
 {
@@ -37,7 +38,6 @@ class RequestTest extends \PHPUnit\Framework\TestCase
         $this->expectException('\InvalidArgumentException');
         $req = (new Request())
             ->withMethod("asdf");
-
     }
 
     /**
@@ -47,7 +47,7 @@ class RequestTest extends \PHPUnit\Framework\TestCase
     {
         $uri = "http://user:pass@localhost/my/app?myquery=1#frag";
         $req = (new Request())
-            ->withUri(new Uri($uri));
+            ->withUri(UriFactory::fromString($uri));
 
         $this->assertEquals((string)$uri, (string)$req->getUri());
     }

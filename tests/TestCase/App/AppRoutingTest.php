@@ -31,7 +31,7 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
     {
         $app = new App();
         $app->connect('/', function () {
-            $response = new Response( 200);
+            $response = new Response(200);
             return $response->withBody(new StringStream('Hello'));
         });
         $app();

@@ -6,6 +6,7 @@ use Flow\Http\Message\Uri;
 use Flow\Object\ConfigInterface;
 use Flow\Object\ConfigTrait;
 use Flow\Object\StaticFactoryTrait;
+use FmLabs\Uri\UriFactory;
 
 class Template implements ConfigInterface
 {
@@ -57,7 +58,7 @@ class Template implements ConfigInterface
             return sprintf('<script src="%s">', $uri);
         });
         $this->addHelper('link', function ($title = "", $uri = "#", $options = []) {
-            $uri = new Uri($uri);
+            //$uri = UriFactory::fromString($uri);
             return sprintf('<a href="%s">%s</a>', $uri, $title);
         });
         $this->addHelper('textBold', function ($str = "") {

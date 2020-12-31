@@ -2,7 +2,7 @@
 
 namespace Flow\Http;
 
-use FmLabs\Uri\Uri;
+use FmLabs\Uri\UriFactory;
 use Psr\Http\Message\ServerRequestFactoryInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\UriInterface;
@@ -92,7 +92,7 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
         $server['REQUEST_METHOD'] = "GET";
 
         $env = new self($server);
-        return $env->createServerRequest("GET", new Uri($path), $server);
+        return $env->createServerRequest("GET", $path, $server);
     }
 
     /**
@@ -109,7 +109,7 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
         $server['REQUEST_METHOD'] = "POST";
 
         $env = new self($server, [], $data);
-        return $env->createServerRequest("POST", new Uri($path), $server);
+        return $env->createServerRequest("POST", $path, $server);
     }
     
     /**
@@ -282,9 +282,10 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
      */
     public function createServerRequest(string $method, $uri, array $serverParams = []): ServerRequestInterface
     {
-        if (is_string($uri)) {
-            $uri = new Uri($uri);
-        }
+        $uri = is_string($uri) ? UriFactory::fromString($uri) : $uri;
+        //if (!($uri instanceof UriInterface)) {
+        //    throw new \InvalidArgumentException("Invalid Uri");
+        //}
 //$_REQUEST['query']    test
 //$_GET['query']    test
 //$_SERVER['DOCUMENT_ROOT'] /home/flow/workspaces/php/flowphp-examples/src
@@ -381,8 +382,8 @@ class Environment implements ServerRequestFactoryInterface, \ArrayAccess
             //->withUserInfo()
             ->withHost($host)
             ->withPort($port)
-            ->withQuery($query)
-            ->withPath($path)
+            ->withQuery((string)$query)
+            ->withPath((string)$path)
             ->withFragment("") // not in a request
         ;
 
