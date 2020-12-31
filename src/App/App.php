@@ -5,16 +5,11 @@ namespace Flow\App;
 use Flow\Http\Message\Request;
 use Flow\Object\ConfigInterface;
 use Flow\Template\Template;
-use Psr\Http\Message\ResponseFactoryInterface;
-use Psr\Http\Message\ResponseInterface;
-use Psr\Http\Message\ServerRequestInterface;
-use Psr\Http\Message\UriInterface;
-use Psr\Http\Server\MiddlewareInterface;
-use Psr\Http\Server\RequestHandlerInterface;
 use Flow\Container\Container;
 use Flow\Http\Environment;
 use Flow\Http\Message\Stream\StringStream;
 use Flow\Http\Message\Response;
+use Flow\Http\Message\Response\ErrorResponse;
 use Flow\Http\Message\Uri;
 use Flow\App\Middleware\CorsMiddleware;
 use Flow\App\Middleware\ErrorMiddleware;
@@ -28,6 +23,12 @@ use Flow\Router\Router;
 use Flow\Router\Route;
 use Flow\Flow;
 use Flow\_View\View;
+use Psr\Http\Message\ResponseFactoryInterface;
+use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\ServerRequestInterface;
+use Psr\Http\Message\UriInterface;
+use Psr\Http\Server\MiddlewareInterface;
+use Psr\Http\Server\RequestHandlerInterface;
 
 /**
  * Flow Application
@@ -347,25 +348,17 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
      * Send an error message with an appropriate http status code
      *
      * @param $message
-     * @param int $status
+     * @param int $httpStatus
      * @todo Print error message to STDERR as well
+     * @return Response|null
      */
-    public function error($message, $httpStatus = 500, $exitStatus = 1)
+    public function error($message, $httpStatus = 500)
     {
-        if ($message instanceof \Exception) {
-            $message = $message->getMessage();
-        }
-
-        //$this->response = new ErrorResponse($status, $message);
-        //$this->send();
-
-        $response = $this->response ?? new Response();
-        $response = $response
+        $response = new ErrorResponse($message, $httpStatus);
+        //$response = $this->response ?? new Response();
+        return $this->response = $response
             ->withStatus($httpStatus, $message)
             ->withBody(new StringStream(sprintf("An error occured: %s", (string) $message)));
-
-        $this->send($response);
-        $this->stop($exitStatus);
     }
 
     public function forward($to)
@@ -556,7 +549,7 @@ class App extends Container implements RequestHandlerInterface, ResponseFactoryI
             throw new \InvalidArgumentException("Instance of Flow\\App expected");
         }
 
-        $app->router()->setPrefix($prefix);
+        $app->router->setPrefix($prefix);
 
         return $this->connect($prefix . '/**', $app);
     }

@@ -9,8 +9,6 @@ use Psr\Http\Server\RequestHandlerInterface;
 /**
  * Class Flow
  * @package Flow
- *
- * @method static cache ($key = null, $val = null, $config = null)
  */
 class Flow
 {
