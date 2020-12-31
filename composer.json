@@ -8,7 +8,7 @@
         "psr/http-server-handler": "^1.0",
         "psr/http-factory": "^1.0",
         "psr/http-server-middleware": "^1.0",
-        "fm-labs/php-uri": "^0.3.1",
+        "fm-labs/php-uri": "^0.6",
         "psr/container": "^1.0"
     },
     "require-dev": {
