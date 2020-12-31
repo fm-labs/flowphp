@@ -2,7 +2,7 @@
     "name": "fm-labs/flowphp",
     "description": "PHP micro framework.",
     "require": {
-        "php": "^7.1",
+        "php": "^7.1|^8.0",
         "ext-json" : "*",
         "psr/http-message": "^1.0",
         "psr/http-server-handler": "^1.0",
