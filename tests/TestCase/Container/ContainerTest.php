@@ -17,12 +17,21 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
      */
     public $c;
 
-    public function setUp()
+    /**
+     * @return void
+     */
+    /**
+     * @return void
+     */
+    public function setUp(): void
     {
         $this->c = new AppContainer();
     }
 
-    public function testRegister()
+    /**
+     * @return void
+     */
+    public function testRegister(): void
     {
         $callable = function () {
             return 'a';
@@ -32,14 +41,20 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals($callable, $c->raw('a'));
     }
 
-    public function testRegisterNonCallable()
+    /**
+     * @return void
+     */
+    public function testRegisterNonCallable(): void
     {
         $c = new AppContainer();
         $c->register('a', 'foo');
         $this->assertEquals('foo', $c->raw('a'));
     }
 
-    public function testResolve()
+    /**
+     * @return void
+     */
+    public function testResolve(): void
     {
         $c = new AppContainer();
         $c->register('a', function () {
@@ -48,20 +63,29 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals('a', $c->resolve('a'));
     }
 
-    public function testResolveNonRegistered()
+    /**
+     * @return void
+     */
+    public function testResolveNonRegistered(): void
     {
         $c = new AppContainer();
         $this->assertEquals(null, $c->resolve('a'));
     }
 
-    public function testResolveNonCallable()
+    /**
+     * @return void
+     */
+    public function testResolveNonCallable(): void
     {
         $c = new AppContainer();
         $c->register('a', 'foo');
         $this->assertEquals('foo', $c->resolve('a'));
     }
 
-    public function testFactory()
+    /**
+     * @return void
+     */
+    public function testFactory(): void
     {
         $factory = function () {
             return uniqid();
@@ -83,7 +107,10 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals($instance1, $instance2);
     }
 
-    public function testFactoryNonCallable()
+    /**
+     * @return void
+     */
+    public function testFactoryNonCallable(): void
     {
         $this->expectException('InvalidArgumentException');
 
@@ -91,7 +118,10 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $c->factory('test_factory', 'Not a callable');
     }
 
-    public function testProtect()
+    /**
+     * @return void
+     */
+    public function testProtect(): void
     {
         $protected = function () {
             return 'protected';
@@ -102,7 +132,10 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals('protected', $c->resolve('a'));
     }
 
-    public function testProtectOverwrite()
+    /**
+     * @return void
+     */
+    public function testProtectOverwrite(): void
     {
         $c = new AppContainer();
         $c->protect('a', 'I am protected');
@@ -111,7 +144,10 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $c->register('a', 'Some other value');
     }
 
-    public function testIsProtected()
+    /**
+     * @return void
+     */
+    public function testIsProtected(): void
     {
         $c = new AppContainer();
         $c->protect('a', 'I am protected');
@@ -121,7 +157,10 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $this->assertFalse($c->isProtected('b'));
     }
 
-    public function testIsFactory()
+    /**
+     * @return void
+     */
+    public function testIsFactory(): void
     {
         $c = new AppContainer();
         $c->factory('a', function () {
@@ -133,12 +172,18 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $this->assertFalse($c->isFactory('b'));
     }
 
-    public function testHasInstance()
+    /**
+     * @return void
+     */
+    public function testHasInstance(): void
     {
         $this->markTestIncomplete();
     }
 
-    public function testHas()
+    /**
+     * @return void
+     */
+    public function testHas(): void
     {
         $c = new AppContainer();
         $c->register('a', 'foo');
@@ -147,7 +192,10 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $this->assertFalse($c->has('b'));
     }
 
-    public function testClear()
+    /**
+     * @return void
+     */
+    public function testClear(): void
     {
         $c = new AppContainer();
         $c->register('a', 'foo');
@@ -156,12 +204,18 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $this->assertFalse($c->has('a'));
     }
 
-    public function testRaw()
+    /**
+     * @return void
+     */
+    public function testRaw(): void
     {
         $this->markTestIncomplete();
     }
 
-    public function testOffsetGet()
+    /**
+     * @return void
+     */
+    public function testOffsetGet(): void
     {
         $c = new AppContainer();
         $c->register('a', function () {
@@ -170,7 +224,10 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals('foo', $c['a']);
     }
 
-    public function testOffsetSet()
+    /**
+     * @return void
+     */
+    public function testOffsetSet(): void
     {
         $c = new AppContainer();
         $c['a'] = function () {
@@ -180,7 +237,10 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
 
     }
 
-    public function testOffsetExist()
+    /**
+     * @return void
+     */
+    public function testOffsetExist(): void
     {
         $c = new AppContainer();
         $c['a'] = function () {
@@ -190,7 +250,10 @@ class ContainerTest extends \PHPUnit\Framework\TestCase
         $this->assertFalse(isset($c['b']));
     }
 
-    public function testOffsetUnset()
+    /**
+     * @return void
+     */
+    public function testOffsetUnset(): void
     {
         $c = new AppContainer();
         $c['a'] = function () {

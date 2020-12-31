@@ -7,14 +7,20 @@ use Flow\Http\Message\Stream\StringStream;
 
 class MessageTest extends \PHPUnit\Framework\TestCase
 {
-    public function testGetHeaderLine()
+    /**
+     * @return void
+     */
+    public function testGetHeaderLine(): void
     {
         $msg = (new Message())
             ->withHeader("foo", "some/header;value");
         $this->assertEquals("some/header;value", $msg->getHeaderLine("foo"));
     }
 
-    public function testGetHeaders()
+    /**
+     * @return void
+     */
+    public function testGetHeaders(): void
     {
         $msg = (new Message())
             ->withHeader("foo", "some/header;value")
@@ -28,7 +34,10 @@ class MessageTest extends \PHPUnit\Framework\TestCase
         ], $msg->getHeaders());
     }
 
-    public function testHasHeader()
+    /**
+     * @return void
+     */
+    public function testHasHeader(): void
     {
         $msg = new Message();
         $this->assertFalse($msg->hasHeader("test"));
@@ -37,7 +46,10 @@ class MessageTest extends \PHPUnit\Framework\TestCase
         $this->assertTrue($msg->hasHeader("test"));
     }
 
-    public function testWithHeader()
+    /**
+     * @return void
+     */
+    public function testWithHeader(): void
     {
         $msg = (new Message())
             ->withHeader("foo", "a")
@@ -49,7 +61,10 @@ class MessageTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals(["x", "y"], $msg->getHeader("bar"));
     }
 
-    public function testWithoutHeader()
+    /**
+     * @return void
+     */
+    public function testWithoutHeader(): void
     {
         $msg = (new Message())
             ->withHeader("test", "foo");
@@ -59,7 +74,10 @@ class MessageTest extends \PHPUnit\Framework\TestCase
         $this->assertFalse($msg->hasHeader("test"));
     }
 
-    public function testWithAddedHeader()
+    /**
+     * @return void
+     */
+    public function testWithAddedHeader(): void
     {
         $msg = (new Message())
             ->withHeader("foo", "a");
@@ -71,7 +89,10 @@ class MessageTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals(["foo" => ["a", "b", "c", "d"]], $msg->getHeaders());
     }
 
-    public function testWithProtocolVersion()
+    /**
+     * @return void
+     */
+    public function testWithProtocolVersion(): void
     {
         $msg = new Message();
         // assert default value
@@ -81,7 +102,10 @@ class MessageTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals("1.0", $msg1->getProtocolVersion());
     }
 
-    public function testWithBody()
+    /**
+     * @return void
+     */
+    public function testWithBody(): void
     {
         $msg = (new Message())
             ->withBody(new StringStream("test"));

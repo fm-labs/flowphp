@@ -16,12 +16,18 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
      */
     protected $env;
 
-    public function setUp()
+    /**
+     * @return void
+     */
+    public function setUp(): void
     {
         $this->env = Environment::mock();
     }
 
-    public function testHandleRequest()
+    /**
+     * @return void
+     */
+    public function testHandleRequest(): void
     {
         $app = new App();
         $app->connect('/', function () {
@@ -37,7 +43,10 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals('Hello', $response->getBody());
     }
 
-    public function testHandleRequestWithStringResult()
+    /**
+     * @return void
+     */
+    public function testHandleRequestWithStringResult(): void
     {
         $app = new App();
         $app->connect('/', function () {
@@ -52,7 +61,10 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals('Hello', $response->getBody());
     }
 
-    public function testHandleRequestWithBufferedContents()
+    /**
+     * @return void
+     */
+    public function testHandleRequestWithBufferedContents(): void
     {
         $this->markTestSkipped('Buffered results are not properly implemented yet.');
 
@@ -69,7 +81,10 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals('Hello', $response->getBody());
     }
 
-    public function testHandleRequestWithBufferedContentAndResponseResult()
+    /**
+     * @return void
+     */
+    public function testHandleRequestWithBufferedContentAndResponseResult(): void
     {
         $this->markTestSkipped('Buffered results are not properly implemented yet.');
 
@@ -88,7 +103,10 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals('Hello', $response->getBody());
     }
 
-    public function testAppMiddleware()
+    /**
+     * @return void
+     */
+    public function testAppMiddleware(): void
     {
         $middlewareTest = array();
 
@@ -110,7 +128,10 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals(array('before', 'route', 'after'), $middlewareTest);
     }
 
-    public function testAppMiddlewareBeforeReturnsResponse()
+    /**
+     * @return void
+     */
+    public function testAppMiddlewareBeforeReturnsResponse(): void
     {
         $middlewareTest = array();
 
@@ -135,7 +156,10 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals('Bar', $response->getBody());
     }
 
-    public function testRouteMiddleware()
+    /**
+     * @return void
+     */
+    public function testRouteMiddleware(): void
     {
         $middlewareTest = array();
 
@@ -166,7 +190,10 @@ class AppRoutingTest extends \PHPUnit\Framework\TestCase
     /**
      * @group testme
      */
-    public function testRouteMiddlewareBeforeReturnsResponse()
+    /**
+     * @return void
+     */
+    public function testRouteMiddlewareBeforeReturnsResponse(): void
     {
         $middlewareTest = array();
 

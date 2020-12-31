@@ -28,7 +28,10 @@ class EnvironmentTest extends \PHPUnit\Framework\TestCase
         return new Environment($env);
     }
 
-    public function testTestEnvironment()
+    /**
+     * @return void
+     */
+    public function testTestEnvironment(): void
     {
         $env = $this->getTestEnvironment();
 
@@ -46,7 +49,10 @@ class EnvironmentTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals($env['QUERY_STRING'], 'query=test');
     }
 
-    public function testCreateServerRequest()
+    /**
+     * @return void
+     */
+    public function testCreateServerRequest(): void
     {
         $env = $this->getTestEnvironment();
         $req = $env->createServerRequest("GET", "/");

@@ -13,7 +13,10 @@ class RouterTest extends \PHPUnit\Framework\TestCase
     /**
      * @group match
      */
-    public function testMatch()
+    /**
+     * @return void
+     */
+    public function testMatch(): void
     {
         $router = new Router();
         $router->connect(new Route('/'));
@@ -80,7 +83,10 @@ class RouterTest extends \PHPUnit\Framework\TestCase
     /**
      * @group match
      */
-    public function testMatchNonExistent()
+    /**
+     * @return void
+     */
+    public function testMatchNonExistent(): void
     {
         $router = new Router();
         $this->assertNull($router->match(ServerRequest::get('/does-not-exist')));
@@ -89,7 +95,10 @@ class RouterTest extends \PHPUnit\Framework\TestCase
     /**
      * @group match
      */
-    public function testMatchWithPrefix()
+    /**
+     * @return void
+     */
+    public function testMatchWithPrefix(): void
     {
         $router = new Router('/myprefix');
         $router->connect(new Route('/'));
@@ -104,7 +113,10 @@ class RouterTest extends \PHPUnit\Framework\TestCase
     /**
      * @group match
      */
-    public function testMatchRecursive()
+    /**
+     * @return void
+     */
+    public function testMatchRecursive(): void
     {
         $this->markTestSkipped('Implement recursive matching behavior');
 

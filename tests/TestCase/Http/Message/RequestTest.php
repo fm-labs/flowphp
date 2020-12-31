@@ -8,14 +8,20 @@ use Flow\Http\Message\Uri;
 class RequestTest extends \PHPUnit\Framework\TestCase
 {
 
-    public function testWithRequestTarget()
+    /**
+     * @return void
+     */
+    public function testWithRequestTarget(): void
     {
         $req = (new Request())
             ->withRequestTarget("test-target");
         $this->assertEquals("test-target", $req->getRequestTarget());
     }
 
-    public function testWithMethod()
+    /**
+     * @return void
+     */
+    public function testWithMethod(): void
     {
         $req = (new Request())
             ->withMethod("POST");
@@ -34,7 +40,10 @@ class RequestTest extends \PHPUnit\Framework\TestCase
 
     }
 
-    public function testWithUri()
+    /**
+     * @return void
+     */
+    public function testWithUri(): void
     {
         $uri = "http://user:pass@localhost/my/app?myquery=1#frag";
         $req = (new Request())

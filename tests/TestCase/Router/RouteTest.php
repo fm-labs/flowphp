@@ -20,7 +20,10 @@ class RouteTest extends \PHPUnit\Framework\TestCase
     /**
      * @group match
      */
-    public function testMatchRoot()
+    /**
+     * @return void
+     */
+    public function testMatchRoot(): void
     {
         $r = new Route('/');
         $r->setPrefix("");
@@ -31,7 +34,10 @@ class RouteTest extends \PHPUnit\Framework\TestCase
     /**
      * @group match
      */
-    public function testMatchStatic()
+    /**
+     * @return void
+     */
+    public function testMatchStatic(): void
     {
         $r = new Route('/foo');
 
@@ -48,7 +54,10 @@ class RouteTest extends \PHPUnit\Framework\TestCase
     /**
      * @group match
      */
-    public function testMatchWithNamedParams()
+    /**
+     * @return void
+     */
+    public function testMatchWithNamedParams(): void
     {
         $r = new Route('/{controller}/');
         $req = $this->mockRequest("GET", "/foo");
@@ -63,7 +72,10 @@ class RouteTest extends \PHPUnit\Framework\TestCase
      * @group match
      * @group matchOptional
      */
-    public function testMatchWithOptionalNamedParams()
+    /**
+     * @return void
+     */
+    public function testMatchWithOptionalNamedParams(): void
     {
         $this->markTestIncomplete();
         $r = new Route('/foo/{?optional}');
@@ -89,7 +101,10 @@ class RouteTest extends \PHPUnit\Framework\TestCase
      * @group match
      * @group wildcard
      */
-    public function testMatchWithNonGreedyWildcardParams()
+    /**
+     * @return void
+     */
+    public function testMatchWithNonGreedyWildcardParams(): void
     {
         $r = new Route('/foo/*');
         $req = $this->mockRequest("GET", "/foo");
@@ -116,7 +131,10 @@ class RouteTest extends \PHPUnit\Framework\TestCase
      * @group match
      * @group wildcard
      */
-    public function testMatchWithGreedyWildcardParams()
+    /**
+     * @return void
+     */
+    public function testMatchWithGreedyWildcardParams(): void
     {
         $r = new Route('/foo/**');
         $req = $this->mockRequest("GET", "/foo");
@@ -136,7 +154,10 @@ class RouteTest extends \PHPUnit\Framework\TestCase
         $this->assertEquals([0 => 'has/another/subpath/at'], $r->getParams());
     }
 
-    public function testMatchWithNamedGreedyWildcardParams()
+    /**
+     * @return void
+     */
+    public function testMatchWithNamedGreedyWildcardParams(): void
     {
         $this->markTestSkipped('Named greedy wildcard parameters is not implemented yet');
     }
@@ -144,7 +165,10 @@ class RouteTest extends \PHPUnit\Framework\TestCase
     /**
      * @group match
      */
-    public function testMatchWithIndexedParams()
+    /**
+     * @return void
+     */
+    public function testMatchWithIndexedParams(): void
     {
         $r = new Route('/{controller}/{1}/{0}');
         $req = $this->mockRequest("GET", "/foo/a/b");
@@ -155,7 +179,10 @@ class RouteTest extends \PHPUnit\Framework\TestCase
     /**
      * @group match
      */
-    public function testMatchWithCustomRegexPatterns()
+    /**
+     * @return void
+     */
+    public function testMatchWithCustomRegexPatterns(): void
     {
         $r = new Route('/{controller}/{action}/{0}/*', array(
             'patterns' => array(
@@ -172,7 +199,10 @@ class RouteTest extends \PHPUnit\Framework\TestCase
     }
 
 
-    public function testMatchPrefixed()
+    /**
+     * @return void
+     */
+    public function testMatchPrefixed(): void
     {
         $r = new Route('/', ['prefix' => '/mytest']);
         $this->assertTrue($r->match($this->mockRequest("GET", "/mytest/")));
